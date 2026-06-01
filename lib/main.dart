@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:firebase_performance/firebase_performance.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'app.dart';
@@ -20,6 +21,12 @@ Future<void> main() async {
   unawaited(
     FirebasePerformance.instance.setPerformanceCollectionEnabled(true),
   );
+  SystemChannels.system.setMessageHandler((message) async {
+    if (message == 'memoryPressure') {
+      debugPrint('Memory pressure warning received');
+    }
+    return null;
+  });
   fb.FirebaseAuth.instance.authStateChanges().listen(_onAuthStateChanged);
   runApp(
     ProviderScope(
