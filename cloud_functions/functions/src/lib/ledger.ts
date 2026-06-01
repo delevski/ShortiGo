@@ -1,7 +1,5 @@
 import * as admin from 'firebase-admin';
 
-const db = admin.firestore();
-
 export type TxType = 'adReward' | 'purchase' | 'spend' | 'refund';
 
 export interface LedgerEntry {
@@ -15,6 +13,7 @@ export interface LedgerEntry {
 export async function appendLedgerAndApply(
   entry: LedgerEntry,
 ): Promise<void> {
+  const db = admin.firestore();
   const userRef = db.collection('users').doc(entry.userId);
   const txRef = userRef.collection('transactions').doc();
 
