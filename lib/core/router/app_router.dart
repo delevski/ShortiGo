@@ -1,6 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:go_router/go_router.dart';
 
 import '../../app.dart';
+import '../../features/auth/presentation/login_page.dart';
 import '../../features/discover/presentation/discover_page.dart';
 import '../../features/episode_player/presentation/episode_player_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
@@ -10,9 +12,24 @@ import '../../features/shorts/presentation/shorts_page.dart';
 import '../../features/subscription/presentation/subscribe_page.dart';
 import '../../shared/widgets/placeholder_page.dart';
 
-GoRouter buildRouter() {
+GoRouter buildRouter({bool requireAuth = false}) {
   return GoRouter(
     initialLocation: '/discover',
+    redirect: (context, state) {
+      if (!requireAuth) {
+        return null;
+      }
+
+      final loggedIn = fb.FirebaseAuth.instance.currentUser != null;
+      final goingToLogin = state.matchedLocation == '/login';
+      if (!loggedIn && !goingToLogin) {
+        return '/login';
+      }
+      if (loggedIn && goingToLogin) {
+        return '/discover';
+      }
+      return null;
+    },
     routes: [
       ShellRoute(
         builder: (context, state, child) => AppShell(child: child),
@@ -54,7 +71,7 @@ GoRouter buildRouter() {
       ),
       GoRoute(
         path: '/login',
-        builder: (_, __) => const PlaceholderPage(title: 'Login'),
+        builder: (_, __) => const LoginPage(),
       ),
       GoRoute(
         path: '/subscribe',

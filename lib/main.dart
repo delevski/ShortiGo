@@ -19,7 +19,11 @@ Future<void> main() async {
     googleApiKey: env.revenueCatApiKeyAndroid,
   );
   fb.FirebaseAuth.instance.authStateChanges().listen(_onAuthStateChanged);
-  runApp(ProviderScope(child: ShortiGoApp(router: buildRouter())));
+  runApp(
+    ProviderScope(
+      child: ShortiGoApp(router: buildRouter(requireAuth: true)),
+    ),
+  );
 }
 
 Future<void> _onAuthStateChanged(fb.User? user) async {
