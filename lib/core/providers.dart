@@ -8,10 +8,12 @@ import '../data/firestore/episode_repository.dart';
 import '../data/firestore/series_repository.dart';
 import '../data/firestore/transaction_repository.dart';
 import '../data/firestore/user_repository.dart';
+import '../data/iap/revenuecat_iap_gateway.dart';
 import '../data/local/shortigo_database.dart';
 import '../data/storage/firebase_video_source.dart';
 import '../domain/interfaces/ad_gateway.dart';
 import '../domain/interfaces/episode_repository.dart';
+import '../domain/interfaces/iap_gateway.dart';
 import '../domain/interfaces/series_repository.dart';
 import '../domain/interfaces/transaction_repository.dart';
 import '../domain/interfaces/user_repository.dart';
@@ -64,6 +66,9 @@ final adGatewayProvider = Provider<AdGateway>((_) {
   return AdmobAdGateway();
 });
 
+final iapGatewayProvider = Provider<IapGateway>((_) {
+  return RevenueCatIapGateway();
+});
+
 // === Future providers (added in their respective milestones) ===
-// M5: iapGatewayProvider
 // M6: adminConfigGatewayProvider
