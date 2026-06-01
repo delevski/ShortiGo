@@ -11,6 +11,7 @@ import '../data/firestore/user_repository.dart';
 import '../data/iap/revenuecat_iap_gateway.dart';
 import '../data/local/shortigo_database.dart';
 import '../data/storage/firebase_video_source.dart';
+import '../domain/entities/user.dart';
 import '../domain/interfaces/ad_gateway.dart';
 import '../domain/interfaces/episode_repository.dart';
 import '../domain/interfaces/iap_gateway.dart';
@@ -33,6 +34,14 @@ final firebaseAuthProvider = Provider<fb.FirebaseAuth>((_) {
 
 final currentAuthUserProvider = StreamProvider<fb.User?>((ref) {
   return ref.watch(firebaseAuthProvider).authStateChanges();
+});
+
+final currentAppUserDocProvider = StreamProvider<AppUser?>((ref) {
+  final auth = ref.watch(currentAuthUserProvider).value;
+  if (auth == null) {
+    return Stream.value(null);
+  }
+  return ref.watch(userRepositoryProvider).watch(auth.uid);
 });
 
 final shortigoDatabaseProvider = Provider<ShortigoDatabase>((_) {

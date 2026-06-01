@@ -102,7 +102,13 @@ class SeriesDetailPage extends ConsumerWidget {
                     trailing: episode.isVipLocked
                         ? const Icon(Icons.lock, color: AppColors.vipGold)
                         : const Icon(Icons.play_circle_outline),
-                    onTap: () => context.push('/player/$seriesId/${episode.id}'),
+                    onTap: () {
+                      if (episode.isVipLocked) {
+                        context.push('/subscribe');
+                        return;
+                      }
+                      context.push('/player/$seriesId/${episode.id}');
+                    },
                   );
                 },
               ),
