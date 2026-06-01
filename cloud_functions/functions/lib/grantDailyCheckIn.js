@@ -33,10 +33,32 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.grantDailyCheckIn = exports.grantAdReward = void 0;
+exports.grantDailyCheckIn = void 0;
 const admin = __importStar(require("firebase-admin"));
-admin.initializeApp();
-var grantAdReward_1 = require("./grantAdReward");
-Object.defineProperty(exports, "grantAdReward", { enumerable: true, get: function () { return grantAdReward_1.grantAdReward; } });
-var grantDailyCheckIn_1 = require("./grantDailyCheckIn");
-Object.defineProperty(exports, "grantDailyCheckIn", { enumerable: true, get: function () { return grantDailyCheckIn_1.grantDailyCheckIn; } });
+const https_1 = require("firebase-functions/v2/https");
+const ledger_1 = require("./lib/ledger");
+const CHECK_IN_COOLDOWN_MS = 20 * 60 * 60 * 1000;
+const CHECK_IN_BONUS = 5;
+exports.grantDailyCheckIn = (0, https_1.onCall)(async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError('unauthenticated', 'Sign in required');
+    }
+    const userId = request.auth.uid;
+    const userRef = admin.firestore().collection('users').doc(userId);
+    const snap = await userRef.get();
+    const lastCheckIn = snap.get('lastDailyCheckIn');
+    const now = admin.firestore.Timestamp.now();
+    if (lastCheckIn &&
+        now.toMillis() - lastCheckIn.toMillis() < CHECK_IN_COOLDOWN_MS) {
+        throw new https_1.HttpsError('failed-precondition', 'Already claimed today');
+    }
+    await userRef.update({ lastDailyCheckIn: now });
+    await (0, ledger_1.appendLedgerAndApply)({
+        userId,
+        type: 'dailyCheckIn',
+        coinsDelta: 0,
+        bonusDelta: CHECK_IN_BONUS,
+        reference: 'dailyCheckIn',
+    });
+    return { ok: true, bonusDelta: CHECK_IN_BONUS };
+});

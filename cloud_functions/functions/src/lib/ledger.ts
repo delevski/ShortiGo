@@ -1,6 +1,11 @@
 import * as admin from 'firebase-admin';
 
-export type TxType = 'adReward' | 'purchase' | 'spend' | 'refund';
+export type TxType =
+  | 'adReward'
+  | 'dailyCheckIn'
+  | 'purchase'
+  | 'spend'
+  | 'refund';
 
 export interface LedgerEntry {
   userId: string;
