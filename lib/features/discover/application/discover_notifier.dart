@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/perf/trace.dart';
 import '../../../core/providers.dart';
 import '../../../domain/entities/category.dart';
 import 'discover_state.dart';
@@ -7,9 +8,11 @@ import 'discover_state.dart';
 class DiscoverNotifier extends AsyncNotifier<DiscoverState> {
   @override
   Future<DiscoverState> build() async {
-    final repo = ref.read(seriesRepositoryProvider);
-    final series = await repo.byCategory(Category.forYou);
-    return DiscoverState(currentCategory: Category.forYou, series: series);
+    return withTrace('discover_load', () async {
+      final repo = ref.read(seriesRepositoryProvider);
+      final series = await repo.byCategory(Category.forYou);
+      return DiscoverState(currentCategory: Category.forYou, series: series);
+    });
   }
 
   Future<void> selectCategory(Category c) async {
@@ -25,4 +28,6 @@ class DiscoverNotifier extends AsyncNotifier<DiscoverState> {
 }
 
 final discoverNotifierProvider =
-    AsyncNotifierProvider<DiscoverNotifier, DiscoverState>(DiscoverNotifier.new);
+    AsyncNotifierProvider<DiscoverNotifier, DiscoverState>(
+  DiscoverNotifier.new,
+);
