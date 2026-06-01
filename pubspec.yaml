@@ -34,7 +34,7 @@ dependencies:
   path: ^1.9.0
 
   # Models
-  freezed_annotation: ^2.4.4
+  freezed_annotation: ^3.1.0
   json_annotation: ^4.9.0
 
   # Video
@@ -44,7 +44,7 @@ dependencies:
 
   # Monetization
   google_mobile_ads: ^5.1.0
-  purchases_flutter: ^6.29.0
+  purchases_flutter: ^10.2.0
 
   # Observability
   sentry_flutter: ^8.4.0
@@ -64,11 +64,11 @@ dev_dependencies:
 
   # Codegen
   build_runner: ^2.4.13
-  freezed: ^2.5.7
+  freezed: ^3.1.0
   json_serializable: ^6.8.0
-  riverpod_generator: 2.6.4
-  custom_lint: 0.7.3
-  riverpod_lint: 2.6.4
+  riverpod_generator: 2.6.5
+  custom_lint: 0.7.5
+  riverpod_lint: 2.6.5
 
   # Mocking / testing
   mocktail: ^1.0.4
