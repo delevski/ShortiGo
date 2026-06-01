@@ -7,11 +7,17 @@ import 'app.dart';
 import 'bootstrap/firebase_bootstrap.dart';
 import 'core/env/env.dart';
 import 'core/router/app_router.dart';
+import 'data/iap/revenuecat_iap_gateway.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   env = Env.fromDefines();
   await FirebaseBootstrap.initialize();
+  final iap = RevenueCatIapGateway();
+  await iap.initialize(
+    appleApiKey: env.revenueCatApiKeyIos,
+    googleApiKey: env.revenueCatApiKeyAndroid,
+  );
   fb.FirebaseAuth.instance.authStateChanges().listen(_onAuthStateChanged);
   runApp(ProviderScope(child: ShortiGoApp(router: buildRouter())));
 }
