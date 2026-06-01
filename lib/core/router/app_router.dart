@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../app.dart';
 import '../../features/discover/presentation/discover_page.dart';
 import '../../features/episode_player/presentation/episode_player_page.dart';
+import '../../features/rewards/presentation/rewards_page.dart';
 import '../../features/series_detail/presentation/series_detail_page.dart';
 import '../../features/shorts/presentation/shorts_page.dart';
 import '../../shared/widgets/placeholder_page.dart';
@@ -24,7 +25,7 @@ GoRouter buildRouter() {
           ),
           GoRoute(
             path: '/rewards',
-            builder: (_, __) => const PlaceholderPage(title: 'Rewards'),
+            builder: (_, __) => const RewardsPage(),
           ),
           GoRoute(
             path: '/my-list',
