@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:firebase_performance/firebase_performance.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import 'app.dart';
 import 'bootstrap/firebase_bootstrap.dart';
@@ -13,10 +17,8 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   env = Env.fromDefines();
   await FirebaseBootstrap.initialize();
-  final iap = RevenueCatIapGateway();
-  await iap.initialize(
-    appleApiKey: env.revenueCatApiKeyIos,
-    googleApiKey: env.revenueCatApiKeyAndroid,
+  unawaited(
+    FirebasePerformance.instance.setPerformanceCollectionEnabled(true),
   );
   fb.FirebaseAuth.instance.authStateChanges().listen(_onAuthStateChanged);
   runApp(
@@ -24,6 +26,19 @@ Future<void> main() async {
       child: ShortiGoApp(router: buildRouter(requireAuth: true)),
     ),
   );
+
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    if (env.sentryDsn.isNotEmpty) {
+      await SentryFlutter.init((options) {
+        options.dsn = env.sentryDsn;
+      });
+    }
+    final iap = RevenueCatIapGateway();
+    await iap.initialize(
+      appleApiKey: env.revenueCatApiKeyIos,
+      googleApiKey: env.revenueCatApiKeyAndroid,
+    );
+  });
 }
 
 Future<void> _onAuthStateChanged(fb.User? user) async {
