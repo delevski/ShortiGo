@@ -57,14 +57,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.13.1"
-  better_player:
+  better_player_plus:
     dependency: "direct main"
     description:
-      name: better_player
-      sha256: fc8883218ab7a2fd7e916956c1f59b5c26c3cab1e4dfd6f051901f5e4da39619
+      name: better_player_plus
+      sha256: fc8804f837b450b1b614d5e624a9312894d3089c9194330542ab04a4afa82127
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.84"
+    version: "1.0.8"
   boolean_selector:
     dependency: transitive
     description:
@@ -566,6 +566,11 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.0"
+  flutter_localizations:
+    dependency: transitive
+    description: flutter
+    source: sdk
+    version: "0.0.0"
   flutter_riverpod:
     dependency: "direct main"
     description:
@@ -744,6 +749,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.2"
+  intl:
+    dependency: transitive
+    description:
+      name: intl
+      sha256: "3df61194eb431efc39c4ceba583b95633a403f46c9fd341e550ce0bfa50e9aa5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.20.2"
   io:
     dependency: transitive
     description:

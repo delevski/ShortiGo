@@ -38,7 +38,6 @@ dependencies:
   json_annotation: ^4.9.0
 
   # Video
-  better_player: ^0.0.84
   visibility_detector: ^0.4.0+2
   cached_network_image: ^3.4.1
 
@@ -56,6 +55,7 @@ dependencies:
   # Util
   rxdart: ^0.28.0
   collection: ^1.18.0
+  better_player_plus: ^1.0.8
 
 dev_dependencies:
   flutter_test:
