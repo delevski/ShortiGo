@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 
 import '../../app.dart';
+import '../../features/discover/presentation/discover_page.dart';
 import '../../shared/widgets/placeholder_page.dart';
 
 GoRouter buildRouter() {
@@ -12,7 +13,7 @@ GoRouter buildRouter() {
         routes: [
           GoRoute(
             path: '/discover',
-            builder: (_, __) => const PlaceholderPage(title: 'Discover'),
+            builder: (_, __) => const DiscoverPage(),
           ),
           GoRoute(
             path: '/shorts',
@@ -29,6 +30,12 @@ GoRouter buildRouter() {
           GoRoute(
             path: '/profile',
             builder: (_, __) => const PlaceholderPage(title: 'Profile'),
+          ),
+          GoRoute(
+            path: '/series/:id',
+            builder: (_, state) => PlaceholderPage(
+              title: 'Series ${state.pathParameters['id']}',
+            ),
           ),
         ],
       ),
