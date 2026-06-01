@@ -3,7 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'transaction.freezed.dart';
 part 'transaction.g.dart';
 
-enum TxType { adReward, purchase, spend, refund }
+enum TxType { adReward, dailyCheckIn, purchase, spend, refund }
 
 @freezed
 abstract class Transaction with _$Transaction {

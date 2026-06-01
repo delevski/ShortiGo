@@ -5,11 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/ads/admob_ad_gateway.dart';
 import '../data/firestore/episode_repository.dart';
 import '../data/firestore/series_repository.dart';
+import '../data/firestore/transaction_repository.dart';
 import '../data/local/shortigo_database.dart';
 import '../data/storage/firebase_video_source.dart';
-import '../domain/interfaces/episode_repository.dart';
 import '../domain/interfaces/ad_gateway.dart';
+import '../domain/interfaces/episode_repository.dart';
 import '../domain/interfaces/series_repository.dart';
+import '../domain/interfaces/transaction_repository.dart';
 import '../domain/interfaces/video_source.dart';
 
 // === Foundational providers (always available) ===
@@ -33,6 +35,10 @@ final seriesRepositoryProvider = Provider<SeriesRepository>((ref) {
 
 final episodeRepositoryProvider = Provider<EpisodeRepository>((ref) {
   return FirestoreEpisodeRepository(ref.watch(firestoreProvider));
+});
+
+final transactionRepositoryProvider = Provider<TransactionRepository>((ref) {
+  return FirestoreTransactionRepository(ref.watch(firestoreProvider));
 });
 
 final videoSourceProvider = Provider<VideoSource>((ref) {

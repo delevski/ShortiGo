@@ -29,6 +29,7 @@ Map<String, dynamic> _$TransactionToJson(_Transaction instance) =>
 
 const _$TxTypeEnumMap = {
   TxType.adReward: 'adReward',
+  TxType.dailyCheckIn: 'dailyCheckIn',
   TxType.purchase: 'purchase',
   TxType.spend: 'spend',
   TxType.refund: 'refund',
