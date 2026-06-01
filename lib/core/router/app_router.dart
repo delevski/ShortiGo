@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../../app.dart';
 import '../../features/auth/presentation/login_page.dart';
@@ -15,6 +17,7 @@ import '../../shared/widgets/placeholder_page.dart';
 GoRouter buildRouter({bool requireAuth = false}) {
   return GoRouter(
     initialLocation: '/discover',
+    observers: [_SentryRouteObserver()],
     redirect: (context, state) {
       if (!requireAuth) {
         return null;
@@ -79,4 +82,19 @@ GoRouter buildRouter({bool requireAuth = false}) {
       ),
     ],
   );
+}
+
+class _SentryRouteObserver extends NavigatorObserver {
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    final name = route.settings.name;
+    if (name != null) {
+      Sentry.addBreadcrumb(
+        Breadcrumb(
+          category: 'navigation',
+          data: {'to': name},
+        ),
+      );
+    }
+  }
 }
