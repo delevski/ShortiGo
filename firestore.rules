@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    match /series/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /episodes/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /categories/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /users/{uid} {
+      allow read, update: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.coins == 0
+        && request.resource.data.bonus == 0;
+    }
+
+    match /users/{uid}/transactions/{txId} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /users/{uid}/favorites/{sid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    match /users/{uid}/events/{eid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    match /admin/{doc} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}
