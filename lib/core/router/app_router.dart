@@ -4,6 +4,7 @@ import '../../app.dart';
 import '../../features/discover/presentation/discover_page.dart';
 import '../../features/episode_player/presentation/episode_player_page.dart';
 import '../../features/series_detail/presentation/series_detail_page.dart';
+import '../../features/shorts/presentation/shorts_page.dart';
 import '../../shared/widgets/placeholder_page.dart';
 
 GoRouter buildRouter() {
@@ -19,7 +20,7 @@ GoRouter buildRouter() {
           ),
           GoRoute(
             path: '/shorts',
-            builder: (_, __) => const PlaceholderPage(title: 'Shorts'),
+            builder: (_, __) => const ShortsPage(),
           ),
           GoRoute(
             path: '/rewards',
