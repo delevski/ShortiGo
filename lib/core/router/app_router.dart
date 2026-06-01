@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../app.dart';
 import '../../features/discover/presentation/discover_page.dart';
+import '../../features/series_detail/presentation/series_detail_page.dart';
 import '../../shared/widgets/placeholder_page.dart';
 
 GoRouter buildRouter() {
@@ -33,8 +34,14 @@ GoRouter buildRouter() {
           ),
           GoRoute(
             path: '/series/:id',
+            builder: (_, state) => SeriesDetailPage(
+              seriesId: state.pathParameters['id']!,
+            ),
+          ),
+          GoRoute(
+            path: '/player/:seriesId/:episodeId',
             builder: (_, state) => PlaceholderPage(
-              title: 'Series ${state.pathParameters['id']}',
+              title: 'Player ${state.pathParameters['episodeId']}',
             ),
           ),
         ],
