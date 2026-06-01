@@ -7,6 +7,7 @@ import '../../features/profile/presentation/profile_page.dart';
 import '../../features/rewards/presentation/rewards_page.dart';
 import '../../features/series_detail/presentation/series_detail_page.dart';
 import '../../features/shorts/presentation/shorts_page.dart';
+import '../../features/subscription/presentation/subscribe_page.dart';
 import '../../shared/widgets/placeholder_page.dart';
 
 GoRouter buildRouter() {
@@ -54,6 +55,10 @@ GoRouter buildRouter() {
       GoRoute(
         path: '/login',
         builder: (_, __) => const PlaceholderPage(title: 'Login'),
+      ),
+      GoRoute(
+        path: '/subscribe',
+        builder: (_, __) => const SubscribePage(),
       ),
     ],
   );

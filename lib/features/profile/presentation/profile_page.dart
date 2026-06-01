@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/error/friendly_error.dart';
 import '../../../core/theme/app_colors.dart';
@@ -106,6 +107,13 @@ class ProfilePage extends ConsumerWidget {
                         ),
                       ),
                     ),
+              ],
+              if (!user.isVip) ...[
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () => context.push('/subscribe'),
+                  child: const Text('Get VIP'),
+                ),
               ],
               const SizedBox(height: 16),
               FilledButton.tonal(
