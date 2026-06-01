@@ -4,3 +4,4 @@ admin.initializeApp();
 
 export { grantAdReward } from './grantAdReward';
 export { grantDailyCheckIn } from './grantDailyCheckIn';
+export { grantVipSubscription } from './grantVipSubscription';

@@ -33,12 +33,32 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.grantVipSubscription = exports.grantDailyCheckIn = exports.grantAdReward = void 0;
+exports.grantVipSubscription = void 0;
 const admin = __importStar(require("firebase-admin"));
-admin.initializeApp();
-var grantAdReward_1 = require("./grantAdReward");
-Object.defineProperty(exports, "grantAdReward", { enumerable: true, get: function () { return grantAdReward_1.grantAdReward; } });
-var grantDailyCheckIn_1 = require("./grantDailyCheckIn");
-Object.defineProperty(exports, "grantDailyCheckIn", { enumerable: true, get: function () { return grantDailyCheckIn_1.grantDailyCheckIn; } });
-var grantVipSubscription_1 = require("./grantVipSubscription");
-Object.defineProperty(exports, "grantVipSubscription", { enumerable: true, get: function () { return grantVipSubscription_1.grantVipSubscription; } });
+const https_1 = require("firebase-functions/v2/https");
+exports.grantVipSubscription = (0, https_1.onRequest)(async (req, res) => {
+    const authHeader = req.headers.authorization ?? '';
+    if (authHeader !== `Bearer ${process.env.RC_WEBHOOK_SECRET ?? ''}`) {
+        res.status(401).send('unauthorized');
+        return;
+    }
+    const event = req.body?.event;
+    if (!event) {
+        res.status(400).send('missing event');
+        return;
+    }
+    const appUserId = event.app_user_id;
+    if (!appUserId) {
+        res.status(400).send('missing app_user_id');
+        return;
+    }
+    const active = event.type === 'INITIAL_PURCHASE' || event.type === 'RENEWAL';
+    const expiresAt = event.expiration_at_ms
+        ? admin.firestore.Timestamp.fromMillis(event.expiration_at_ms)
+        : null;
+    await admin.firestore().collection('users').doc(appUserId).update({
+        isVip: active,
+        vipExpiresAt: expiresAt,
+    });
+    res.status(200).send('ok');
+});
