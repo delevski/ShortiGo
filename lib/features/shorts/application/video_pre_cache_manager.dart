@@ -20,18 +20,24 @@ class VideoPreCacheManager {
       return;
     }
 
-    final keepIds = <String>{};
-    for (var offset = -1; offset <= 1; offset++) {
-      final index = currentIndex + offset;
-      if (index < 0 || index >= episodes.length) {
-        continue;
+    final keepIds = <String>{episodes[currentIndex].id};
+    var remaining = windowSize - keepIds.length;
+    for (var offset = 1; remaining > 0; offset++) {
+      final next = currentIndex + offset;
+      if (next < episodes.length) {
+        keepIds.add(episodes[next].id);
+        remaining--;
       }
-      keepIds.add(episodes[index].id);
-    }
 
-    final next = currentIndex + 2;
-    if (next < episodes.length) {
-      keepIds.add(episodes[next].id);
+      final previous = currentIndex - offset;
+      if (remaining > 0 && previous >= 0) {
+        keepIds.add(episodes[previous].id);
+        remaining--;
+      }
+
+      if (next >= episodes.length && previous < 0) {
+        break;
+      }
     }
 
     final toRemove = _controllers.keys

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +29,12 @@ class _ShortsPageState extends ConsumerState<ShortsPage> {
   int _current = 0;
   int _swipeNetworkCalls = 0;
   bool _isPriming = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _maybeShrinkWindow();
+  }
 
   @override
   void dispose() {
@@ -127,6 +134,28 @@ class _ShortsPageState extends ConsumerState<ShortsPage> {
       if (mounted) {
         setState(() => _isPriming = false);
       }
+    }
+  }
+
+  void _maybeShrinkWindow() {
+    if (!Platform.isAndroid) {
+      return;
+    }
+
+    final meminfo = File('/proc/meminfo');
+    if (!meminfo.existsSync()) {
+      return;
+    }
+
+    final text = meminfo.readAsStringSync();
+    final match = RegExp(r'MemTotal:\s+(\d+)').firstMatch(text);
+    if (match == null) {
+      return;
+    }
+
+    final totalMb = (int.parse(match.group(1)!) / 1024).round();
+    if (totalMb < 3000) {
+      _preCache.windowSize = 2;
     }
   }
 }
