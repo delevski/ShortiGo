@@ -1,14 +1,25 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        exists(/databases/$(db)/documents/adminUsers/$(request.auth.uid))
+      );
+    }
+
     match /series/{id} {
       allow read: if true;
-      allow write: if false;
+      allow write: if isAdmin();
     }
 
     match /episodes/{id} {
       allow read: if true;
-      allow write: if false;
+      allow write: if isAdmin();
     }
 
     match /categories/{id} {
@@ -47,7 +58,11 @@ service cloud.firestore {
 
     match /admin/{doc} {
       allow read: if true;
-      allow write: if false;
+      allow write: if isAdmin();
+    }
+
+    match /adminUsers/{uid} {
+      allow read, write: if false;
     }
   }
 }

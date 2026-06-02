@@ -31,88 +31,96 @@ class SeriesDetailPage extends ConsumerWidget {
             return const Center(child: Text('Series not found'));
           }
 
-          return CustomScrollView(
-            slivers: [
-              SliverAppBar(
-                expandedHeight: 320,
-                pinned: true,
-                backgroundColor: AppColors.bg,
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      CachedNetworkImage(
-                        imageUrl: series.coverUrl,
-                        fit: BoxFit.cover,
-                      ),
-                      const DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Colors.transparent, AppColors.bg],
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(seriesDetailNotifierProvider(seriesId));
+              await ref.read(seriesDetailNotifierProvider(seriesId).future);
+            },
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverAppBar(
+                  expandedHeight: 320,
+                  pinned: true,
+                  backgroundColor: AppColors.bg,
+                  flexibleSpace: FlexibleSpaceBar(
+                    background: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        CachedNetworkImage(
+                          imageUrl: series.coverUrl,
+                          fit: BoxFit.cover,
+                        ),
+                        const DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.transparent, AppColors.bg],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          series.title,
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${series.episodeCount} EP - '
+                          '${series.category.displayName}',
+                          style:
+                              const TextStyle(color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(series.description),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverList.builder(
+                  itemCount: state.episodes.length,
+                  itemBuilder: (_, index) {
+                    final episode = state.episodes[index];
+
+                    return ListTile(
+                      leading: SizedBox(
+                        width: 64,
+                        height: 64,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: CachedNetworkImage(
+                            imageUrl: episode.thumbnailUrl,
+                            fit: BoxFit.cover,
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                      title: Text('EP.${episode.order}'),
+                      subtitle: Text('${episode.durationSec}s'),
+                      trailing: episode.isVipLocked
+                          ? const Icon(Icons.lock, color: AppColors.vipGold)
+                          : const Icon(Icons.play_circle_outline),
+                      onTap: () {
+                        if (episode.isVipLocked) {
+                          context.push('/subscribe');
+                          return;
+                        }
+                        context.push('/player/$seriesId/${episode.id}');
+                      },
+                    );
+                  },
                 ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        series.title,
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${series.episodeCount} EP - '
-                        '${series.category.displayName}',
-                        style: const TextStyle(color: AppColors.textSecondary),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(series.description),
-                    ],
-                  ),
-                ),
-              ),
-              SliverList.builder(
-                itemCount: state.episodes.length,
-                itemBuilder: (_, index) {
-                  final episode = state.episodes[index];
-
-                  return ListTile(
-                    leading: SizedBox(
-                      width: 64,
-                      height: 64,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: CachedNetworkImage(
-                          imageUrl: episode.thumbnailUrl,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                    title: Text('EP.${episode.order}'),
-                    subtitle: Text('${episode.durationSec}s'),
-                    trailing: episode.isVipLocked
-                        ? const Icon(Icons.lock, color: AppColors.vipGold)
-                        : const Icon(Icons.play_circle_outline),
-                    onTap: () {
-                      if (episode.isVipLocked) {
-                        context.push('/subscribe');
-                        return;
-                      }
-                      context.push('/player/$seriesId/${episode.id}');
-                    },
-                  );
-                },
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),

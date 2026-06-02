@@ -13,8 +13,7 @@ class EpisodePlayerView extends StatefulWidget {
 class _EpisodePlayerViewState extends State<EpisodePlayerView> {
   @override
   Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: 9 / 16,
+    return SizedBox.expand(
       child: BetterPlayer(controller: widget.controller),
     );
   }

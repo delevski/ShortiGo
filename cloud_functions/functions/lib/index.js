@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.grantVipSubscription = exports.grantDailyCheckIn = exports.grantAdReward = void 0;
+exports.finalizeEpisode = exports.uploadInit = exports.grantVipSubscription = exports.grantDailyCheckIn = exports.grantAdReward = void 0;
 const admin = __importStar(require("firebase-admin"));
 admin.initializeApp();
 var grantAdReward_1 = require("./grantAdReward");
@@ -42,3 +42,7 @@ var grantDailyCheckIn_1 = require("./grantDailyCheckIn");
 Object.defineProperty(exports, "grantDailyCheckIn", { enumerable: true, get: function () { return grantDailyCheckIn_1.grantDailyCheckIn; } });
 var grantVipSubscription_1 = require("./grantVipSubscription");
 Object.defineProperty(exports, "grantVipSubscription", { enumerable: true, get: function () { return grantVipSubscription_1.grantVipSubscription; } });
+var uploadInit_1 = require("./uploadInit");
+Object.defineProperty(exports, "uploadInit", { enumerable: true, get: function () { return uploadInit_1.uploadInit; } });
+var finalizeEpisode_1 = require("./finalizeEpisode");
+Object.defineProperty(exports, "finalizeEpisode", { enumerable: true, get: function () { return finalizeEpisode_1.finalizeEpisode; } });

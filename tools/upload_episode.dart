@@ -33,15 +33,23 @@ Future<void> main(List<String> args) async {
 
   final projectId =
       Platform.environment['FIREBASE_PROJECT_ID'] ?? 'shortigo-prod';
-  final bucket = Platform.environment['FIREBASE_STORAGE_BUCKET'] ??
-      '$projectId.appspot.com';
+  final envBucket = Platform.environment['FIREBASE_STORAGE_BUCKET'];
   final token = await _accessToken();
+  final client = HttpClient();
+  final bucket = envBucket ??
+      await _resolveExistingBucket(
+        client: client,
+        token: token,
+        candidates: [
+          '$projectId.firebasestorage.app',
+          '$projectId.appspot.com',
+        ],
+      );
 
   final episodeId = '${seriesId}_e$order';
   final videoObject = 'series/$seriesId/episodes/$episodeId.mp4';
   final thumbObject = 'series/$seriesId/thumbnails/$episodeId.jpg';
 
-  final client = HttpClient();
   try {
     stdout.writeln('Uploading video to gs://$bucket/$videoObject...');
     final videoUrl = await _uploadObject(
@@ -83,6 +91,35 @@ Future<void> main(List<String> args) async {
   }
 
   stdout.writeln('Episode $order uploaded to series $seriesId.');
+}
+
+Future<String> _resolveExistingBucket({
+  required HttpClient client,
+  required String token,
+  required List<String> candidates,
+}) async {
+  for (final bucket in candidates) {
+    if (await _bucketExists(client: client, token: token, bucket: bucket)) {
+      return bucket;
+    }
+  }
+
+  throw StateError(
+    'Could not resolve a valid storage bucket. Set FIREBASE_STORAGE_BUCKET.',
+  );
+}
+
+Future<bool> _bucketExists({
+  required HttpClient client,
+  required String token,
+  required String bucket,
+}) async {
+  final uri = Uri.https('storage.googleapis.com', '/storage/v1/b/$bucket');
+  final request = await client.getUrl(uri);
+  request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
+  final response = await request.close();
+  await response.drain<void>();
+  return response.statusCode == HttpStatus.ok;
 }
 
 void _usage() {

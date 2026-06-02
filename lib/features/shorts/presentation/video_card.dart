@@ -69,11 +69,8 @@ class _VideoCardState extends State<VideoCard> {
               ),
             )
           else if (controller != null)
-            Center(
-              child: AspectRatio(
-                aspectRatio: 9 / 16,
-                child: BetterPlayer(controller: controller),
-              ),
+            Positioned.fill(
+              child: BetterPlayer(controller: controller),
             )
           else
             const Center(child: CircularProgressIndicator()),

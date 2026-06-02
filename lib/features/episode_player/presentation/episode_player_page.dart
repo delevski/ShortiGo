@@ -30,46 +30,41 @@ class EpisodePlayerPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: SafeArea(
-        child: async.when(
-          loading: () => const LoadingView(),
-          error: (error, _) => ErrorView(
-            error: friendlyErrorFor(error),
-            onRetry: () => ref.invalidate(episodePlayerNotifierProvider(args)),
-          ),
-          data: (state) {
-            final user = ref.watch(currentAppUserDocProvider).value;
-            if (state.episode?.isVipLocked == true &&
-                !(user?.isVip ?? false)) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.lock,
-                      size: 64,
-                      color: AppColors.vipGold,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'This episode is VIP-only',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: () => context.push('/subscribe'),
-                      child: const Text('Get VIP'),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return Center(
-              child: EpisodePlayerView(controller: state.controller!),
-            );
-          },
+      body: async.when(
+        loading: () => const LoadingView(),
+        error: (error, _) => ErrorView(
+          error: friendlyErrorFor(error),
+          onRetry: () => ref.invalidate(episodePlayerNotifierProvider(args)),
         ),
+        data: (state) {
+          final user = ref.watch(currentAppUserDocProvider).value;
+          if (state.episode?.isVipLocked == true && !(user?.isVip ?? false)) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.lock,
+                    size: 64,
+                    color: AppColors.vipGold,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'This episode is VIP-only',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton(
+                    onPressed: () => context.push('/subscribe'),
+                    child: const Text('Get VIP'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return EpisodePlayerView(controller: state.controller!);
+        },
       ),
     );
   }

@@ -26,10 +26,13 @@ coverage/
 # Secrets
 **/.env
 **/.env.*
+!**/.env.example
 **/secrets.dart
 **/firebase_options.dart
 
 # Build artifacts
+**/dist/
+**/*.tsbuildinfo
 *.apk
 *.aab
 *.ipa

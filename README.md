@@ -411,6 +411,7 @@ production backend:
 - `grantAdReward` — verifies a rewarded-ad event (rate-limited) and credits bonus.
 - `grantDailyCheckIn` — enforces the once-per-day window and credits bonus.
 - `grantVipSubscription` — RevenueCat webhook that flips `isVip` / `vipExpiresAt`.
+- `uploadInit` / `finalizeEpisode` — paid-mode Firebase Storage upload flow.
 
 ```bash
 cd cloud_functions/functions
@@ -425,6 +426,13 @@ deployment requires a billing account.
 
 - `tools/seed_firestore.dart` — seed demo series/episodes into a project.
 - `tools/upload_episode.dart` — future paid-mode upload helper for Storage/GCS.
+- `admin/` — Spark-safe web CRM that uploads to Cloudinary and writes Firestore docs.
+- `docs/crm-upload-schema.md` — locked Firestore/direct-URL schema for uploads.
+
+The admin CRM uses Google Sign-In and direct Firestore writes. To allow a user to
+publish, create `adminUsers/{firebaseAuthUid}` in Firestore from the Firebase Console
+or set an `admin: true` custom claim from a trusted Admin SDK environment. Do not make
+generic signed-in users admins.
 
 ```bash
 # Requires gcloud auth and a Storage bucket; not used in Spark-only mode
