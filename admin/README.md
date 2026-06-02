@@ -22,6 +22,25 @@ npm run dev
 
 Open: http://localhost:5173/
 
+## Media library
+
+Use the **Media library** tab to see all published episodes (thumbnail grid grouped by series).
+
+Deleting an episode removes:
+
+- the `episodes/{id}` document in Firestore
+- the video (and thumbnail) assets in Cloudinary
+
+Deleting a whole series removes all its episodes plus the `series/{id}` document.
+
+For Cloudinary deletes, add to `admin/.env` (not `VITE_` — server-only):
+
+- `CLOUDINARY_CLOUD_NAME` (or reuse `VITE_CLOUDINARY_CLOUD_NAME`)
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+
+Restart `npm run dev` after adding keys. Deletes use a local API route (`/api/cloudinary/delete`) and work with `npm run dev` / `npm run preview`, not on a static-only host unless you add a backend.
+
 ## How to publish
 
 1. Sign in with Google.

@@ -1,3 +1,5 @@
+import { normalizeCloudinaryEpisodeUrls } from "../lib/cloudinary";
+
 type MediaPreviewProps = {
   videoUrl: string;
   thumbnailUrl: string;
@@ -13,16 +15,18 @@ export function MediaPreview({
     return null;
   }
 
+  const media = normalizeCloudinaryEpisodeUrls(videoUrl, thumbnailUrl);
+
   return (
     <div className="media-preview">
       <div className="media-preview__player">
-        {videoUrl ? (
+        {media.videoUrl ? (
           <video
             className="media-preview__video"
-            src={videoUrl}
+            src={media.videoUrl}
             controls
             playsInline
-            poster={thumbnailUrl || undefined}
+            poster={media.thumbnailUrl || undefined}
           />
         ) : (
           <div className="media-preview__placeholder">No video yet</div>
@@ -34,10 +38,17 @@ export function MediaPreview({
       <div className="media-preview__meta">
         <p className="media-preview__label">Ready to publish</p>
         <p className="media-preview__hint">9:16 crop applied for mobile fullscreen</p>
-        {videoUrl ? (
+        {media.thumbnailUrl && !media.videoUrl ? (
+          <img
+            className="media-preview__thumb"
+            src={media.thumbnailUrl}
+            alt="Episode thumbnail"
+          />
+        ) : null}
+        {media.videoUrl ? (
           <a
             className="media-preview__link"
-            href={videoUrl}
+            href={media.videoUrl}
             target="_blank"
             rel="noreferrer"
           >

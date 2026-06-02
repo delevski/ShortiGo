@@ -62,7 +62,9 @@ service cloud.firestore {
     }
 
     match /adminUsers/{uid} {
-      allow read, write: if false;
+      // CRM checks adminUsers/{uid} on sign-in; only the signed-in user may read their row.
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if false;
     }
   }
 }

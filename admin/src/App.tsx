@@ -19,6 +19,7 @@ import {
 } from "firebase/firestore";
 import { auth, db, firebaseConfigError } from "./firebase";
 import { FileDropzone } from "./components/FileDropzone";
+import { MediaLibrary } from "./components/MediaLibrary";
 import { MediaPreview } from "./components/MediaPreview";
 import { StatusBanner } from "./components/StatusBanner";
 import { useToast } from "./components/ToastStack";
@@ -30,8 +31,25 @@ import {
   cloudinaryGeneratedThumbnailUrl,
   cloudinaryVideoDeliveryUrl,
   formatFileSize,
+  normalizeCloudinaryEpisodeUrls,
   uploadToCloudinaryWithProgress,
 } from "./lib/cloudinary";
+import {
+  cloudinaryPublicIdFromUrl,
+  episodeAppLabel,
+  plannedEpisodeDocId,
+} from "./lib/episodeMeta";
+import {
+  fetchPublishedEpisodes,
+  findEpisodesByCloudinaryId,
+  type PublishedEpisodeRow,
+} from "./lib/firestoreEpisodes";
+import {
+  ensureSeriesDoc,
+  fetchNextEpisodeOrder,
+  syncSeriesStats,
+  type SeriesMeta,
+} from "./lib/seriesFirestore";
 
 type SeriesOption = {
   id: string;
@@ -44,6 +62,8 @@ type SeriesOption = {
 type StatusVariant = "idle" | "success" | "error" | "info";
 
 type OverlayStep = { label: string; done: boolean; active: boolean };
+
+type AppView = "upload" | "library";
 
 function isHttpUrl(value: string): boolean {
   return value.startsWith("http://") || value.startsWith("https://");
@@ -90,76 +110,6 @@ async function fetchSeriesOptions(): Promise<SeriesOption[]> {
   return rows;
 }
 
-async function fetchNextEpisodeOrder(seriesId: string): Promise<number> {
-  if (!db || !seriesId.trim()) {
-    return 1;
-  }
-  const snap = await getDocs(
-    query(collection(db, "episodes"), where("seriesId", "==", seriesId.trim())),
-  );
-  let maxOrder = 0;
-  for (const item of snap.docs) {
-    const order = item.data().order;
-    if (typeof order === "number" && order > maxOrder) {
-      maxOrder = order;
-    }
-  }
-  return maxOrder + 1;
-}
-
-async function syncSeriesStats(
-  seriesId: string,
-  meta: {
-    title: string;
-    coverUrl: string;
-    category: string;
-    isVip: boolean;
-  },
-): Promise<{ episodeCount: number; totalDurationSec: number }> {
-  if (!db) {
-    return { episodeCount: 0, totalDurationSec: 0 };
-  }
-
-  const snap = await getDocs(
-    query(collection(db, "episodes"), where("seriesId", "==", seriesId)),
-  );
-
-  let totalDurationSec = 0;
-  for (const item of snap.docs) {
-    const duration = item.data().durationSec;
-    if (typeof duration === "number") {
-      totalDurationSec += duration;
-    }
-  }
-  const episodeCount = snap.size;
-  const seriesRef = doc(db, "series", seriesId);
-  const existing = await getDoc(seriesRef);
-
-  const fields = {
-    id: seriesId,
-    title: meta.title,
-    coverUrl: meta.coverUrl,
-    category: meta.category,
-    isVip: meta.isVip,
-    episodeCount,
-    totalDurationSec,
-    isPublished: true,
-  };
-
-  if (!existing.exists()) {
-    await setDoc(seriesRef, {
-      ...fields,
-      description: "",
-      createdAt: serverTimestamp(),
-      popularity: 0,
-    });
-  } else {
-    await setDoc(seriesRef, fields, { merge: true });
-  }
-
-  return { episodeCount, totalDurationSec };
-}
-
 function initialUploadSteps(hasThumbnail: boolean): OverlayStep[] {
   const steps: OverlayStep[] = [
     { label: "Video upload", done: false, active: true },
@@ -204,6 +154,7 @@ export function App() {
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [replaceExisting, setReplaceExisting] = useState(false);
   const [status, setStatus] = useState("Ready");
+  const [view, setView] = useState<AppView>("upload");
   const toast = useToast();
 
   const notifyError = useCallback(
@@ -234,8 +185,21 @@ export function App() {
   const [overlayPercent, setOverlayPercent] = useState(0);
   const [overlayIndeterminate, setOverlayIndeterminate] = useState(false);
   const [overlaySteps, setOverlaySteps] = useState<OverlayStep[]>([]);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [publishedEpisodes, setPublishedEpisodes] = useState<
+    PublishedEpisodeRow[]
+  >([]);
+  const [cloudinaryMatches, setCloudinaryMatches] = useState<
+    (PublishedEpisodeRow & { seriesId: string })[]
+  >([]);
 
   const activeSeriesId = seriesMode === "existing" ? selectedSeriesId : seriesId;
+  const plannedEpisodeId = activeSeriesId.trim()
+    ? plannedEpisodeDocId(activeSeriesId, order)
+    : "";
+  const cloudinaryAssetId = videoUrl
+    ? cloudinaryPublicIdFromUrl(videoUrl)
+    : null;
   const statusVariant = statusVariantFromMessage(status);
   const cloudinaryReady = !cloudinaryConfigError();
 
@@ -280,6 +244,43 @@ export function App() {
     }
     void refreshSeriesList();
   }, [user, refreshSeriesList]);
+
+  useEffect(() => {
+    if (!user || !db) {
+      setIsAdmin(null);
+      return;
+    }
+    void getDoc(doc(db, "adminUsers", user.uid))
+      .then((snap) => setIsAdmin(snap.exists()))
+      .catch(() => setIsAdmin(false));
+  }, [user]);
+
+  const refreshPublishedEpisodes = useCallback(async (targetSeriesId: string) => {
+    const rows = await fetchPublishedEpisodes(targetSeriesId);
+    setPublishedEpisodes(rows);
+  }, []);
+
+  useEffect(() => {
+    if (!activeSeriesId.trim()) {
+      setPublishedEpisodes([]);
+      return;
+    }
+    void refreshPublishedEpisodes(activeSeriesId);
+  }, [activeSeriesId, refreshPublishedEpisodes]);
+
+  useEffect(() => {
+    if (!videoUrl.trim()) {
+      setCloudinaryMatches([]);
+      return;
+    }
+    const publicId = cloudinaryPublicIdFromUrl(videoUrl);
+    const needle =
+      publicId?.split("/").pop() ?? videoUrl.split("/").pop() ?? "";
+    if (!needle || needle.length < 8) {
+      return;
+    }
+    void findEpisodesByCloudinaryId(needle).then(setCloudinaryMatches);
+  }, [videoUrl]);
 
   useEffect(() => {
     if (seriesMode !== "existing" || !selectedSeriesId) {
@@ -349,9 +350,122 @@ export function App() {
     await signInWithPopup(auth, provider);
   }
 
+  type ResolvedMedia = {
+    videoUrl: string;
+    thumbnailUrl: string;
+    durationSec: number;
+  };
+
+  type PublishResult = {
+    episodeId: string;
+    seriesId: string;
+    seriesTitle: string;
+    episodeOrder: number;
+    episodeCount: number;
+  };
+
+  async function persistEpisode(media: ResolvedMedia): Promise<PublishResult> {
+    if (!db) {
+      throw new Error("Firestore is not ready.");
+    }
+    const safeSeriesId = activeSeriesId.trim();
+    if (!safeSeriesId) {
+      throw new Error("Choose or create a series first.");
+    }
+    const normalized = normalizeCloudinaryEpisodeUrls(
+      media.videoUrl.trim(),
+      media.thumbnailUrl.trim(),
+    );
+    const safeVideoUrl = normalized.videoUrl;
+    const safeThumbnailUrl = normalized.thumbnailUrl;
+    if (!isHttpUrl(safeVideoUrl)) {
+      throw new Error("Video URL is missing — upload the video first.");
+    }
+    if (!isHttpUrl(safeThumbnailUrl)) {
+      throw new Error("Thumbnail URL is missing.");
+    }
+    const safeSeriesTitle = seriesTitle.trim() || `Series ${safeSeriesId}`;
+    const safeCoverUrl = seriesCoverUrl.trim() || safeThumbnailUrl;
+    const safeDuration = media.durationSec || durationSec;
+    const episodeId = `${safeSeriesId}_e${order}`;
+    const episodeRef = doc(db, "episodes", episodeId);
+    const seriesMeta: SeriesMeta = {
+      title: safeSeriesTitle,
+      coverUrl: safeCoverUrl,
+      category: seriesCategory,
+      isVip: seriesIsVip || isVipLocked,
+    };
+
+    setStatus("Checking existing episode...");
+    const existing = await getDoc(episodeRef);
+    if (existing.exists() && !replaceExisting) {
+      throw new Error(
+        `Episode ${episodeId} already exists. Enable "Replace existing" to overwrite.`,
+      );
+    }
+
+    setStatus("Creating series record...");
+    await ensureSeriesDoc(safeSeriesId, seriesMeta);
+
+    setStatus("Saving episode to Firestore...");
+    await setDoc(episodeRef, {
+      id: episodeId,
+      seriesId: safeSeriesId,
+      order,
+      isVipLocked,
+      durationSec: safeDuration,
+      videoUrl: safeVideoUrl,
+      thumbnailUrl: safeThumbnailUrl,
+    });
+
+    setStatus("Syncing series episode count...");
+    const stats = await syncSeriesStats(safeSeriesId, seriesMeta);
+
+    if (addToForYou) {
+      setStatus("Adding series to For You...");
+      await setDoc(
+        doc(db, "admin", "featured"),
+        {
+          seriesIds: arrayUnion(safeSeriesId),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+    }
+
+    return {
+      episodeId,
+      seriesId: safeSeriesId,
+      seriesTitle: safeSeriesTitle,
+      episodeOrder: order,
+      episodeCount: stats.episodeCount,
+    };
+  }
+
+  async function finishPublish(result: PublishResult): Promise<void> {
+    resetEpisodeForm(true);
+    await refreshSeriesList();
+    setSeriesMode("existing");
+    setSelectedSeriesId(result.seriesId);
+    await refreshNextEpisodeMeta(result.seriesId);
+    await refreshPublishedEpisodes(result.seriesId);
+
+    notifySuccess(
+      "Published to Firestore",
+      `${episodeAppLabel(result.episodeOrder)} saved as ${result.episodeId}. Series "${result.seriesTitle}" now has ${result.episodeCount} episode(s).`,
+    );
+  }
+
   async function handlePublish(event: FormEvent) {
     event.preventDefault();
-    if (!canSubmit || !db) {
+    if (!db) {
+      return;
+    }
+    if (isAdmin === false) {
+      toast.error(
+        "Cannot publish",
+        `Create adminUsers/${user?.uid ?? "{uid}"} in Firestore first.`,
+      );
       return;
     }
 
@@ -361,69 +475,17 @@ export function App() {
     setOverlayTitle("Publishing episode");
     setOverlaySubtitle("Writing to Firestore…");
     setOverlaySteps([
-      { label: "Save episode", done: false, active: true },
-      { label: "Update series", done: false, active: false },
+      { label: "Create / update series", done: false, active: true },
+      { label: "Save episode", done: false, active: false },
       { label: "Update discovery", done: false, active: false },
     ]);
     try {
-      const safeSeriesId = activeSeriesId.trim();
-      const safeVideoUrl = videoUrl.trim();
-      const safeThumbnailUrl = thumbnailUrl.trim();
-      const safeSeriesTitle = seriesTitle.trim() || `Series ${safeSeriesId}`;
-      const safeCoverUrl = seriesCoverUrl.trim() || safeThumbnailUrl;
-      const episodeId = `${safeSeriesId}_e${order}`;
-      const episodeRef = doc(db, "episodes", episodeId);
-
-      setStatus("Checking existing episode...");
-      const existing = await getDoc(episodeRef);
-      if (existing.exists() && !replaceExisting) {
-        throw new Error(
-          `Episode ${episodeId} already exists. Enable "Replace existing" to overwrite.`,
-        );
-      }
-
-      setStatus("Saving episode to Firestore...");
-      await setDoc(episodeRef, {
-        id: episodeId,
-        seriesId: safeSeriesId,
-        order,
-        isVipLocked,
+      const result = await persistEpisode({
+        videoUrl,
+        thumbnailUrl,
         durationSec,
-        videoUrl: safeVideoUrl,
-        thumbnailUrl: safeThumbnailUrl,
       });
-
-      setStatus("Syncing series episode count...");
-      const stats = await syncSeriesStats(safeSeriesId, {
-        title: safeSeriesTitle,
-        coverUrl: safeCoverUrl,
-        category: seriesCategory,
-        isVip: seriesIsVip || isVipLocked,
-      });
-
-      if (addToForYou) {
-        setStatus("Adding series to For You...");
-        await setDoc(
-          doc(db, "admin", "featured"),
-          {
-            seriesIds: arrayUnion(safeSeriesId),
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true },
-        );
-      }
-
-      const publishedSeriesId = safeSeriesId;
-      resetEpisodeForm(true);
-      await refreshSeriesList();
-      setSeriesMode("existing");
-      setSelectedSeriesId(publishedSeriesId);
-      await refreshNextEpisodeMeta(publishedSeriesId);
-
-      notifySuccess(
-        "Published",
-        `Episode ${episodeId} is live. Series "${safeSeriesId}" has ${stats.episodeCount} episode(s).`,
-      );
+      await finishPublish(result);
     } catch (error) {
       notifyError("Publish failed", error);
     } finally {
@@ -434,22 +496,22 @@ export function App() {
     }
   }
 
-  async function handleUploadMedia() {
+  async function runUpload(): Promise<ResolvedMedia | null> {
     if (!videoFile) {
       toast.error("Upload", "Select a video file first.");
       setStatus("Failed: select a video file first.");
-      return;
+      return null;
     }
     const configError = cloudinaryConfigError();
     if (configError) {
       toast.error("Cloudinary not configured", configError);
       setStatus(`Failed: ${configError}`);
-      return;
+      return null;
     }
     if (!activeSeriesId.trim()) {
       toast.error("Upload", "Choose or create a series first.");
       setStatus("Failed: choose or create a series first.");
-      return;
+      return null;
     }
 
     const hasThumbnail = !!thumbnailFile;
@@ -503,6 +565,7 @@ export function App() {
       );
       setDurationSec(detectedDuration);
 
+      let resolvedThumbnailUrl: string;
       if (thumbnailFile) {
         setOverlayTitle("Uploading thumbnail");
         setOverlaySubtitle(thumbnailFile.name);
@@ -521,11 +584,13 @@ export function App() {
             );
           },
         );
-        setThumbnailUrl(uploadedThumb.secure_url);
+        resolvedThumbnailUrl = uploadedThumb.secure_url;
+        setThumbnailUrl(resolvedThumbnailUrl);
         steps = markStep(steps, stepIndex, true, false);
         stepIndex += 1;
       } else {
-        setThumbnailUrl(cloudinaryGeneratedThumbnailUrl(uploadedVideo));
+        resolvedThumbnailUrl = cloudinaryGeneratedThumbnailUrl(uploadedVideo);
+        setThumbnailUrl(resolvedThumbnailUrl);
         if (hasThumbnail) {
           steps = markStep(steps, stepIndex, true, false);
           stepIndex += 1;
@@ -538,17 +603,63 @@ export function App() {
       steps = markStep(steps, stepIndex, true, false);
       setOverlaySteps([...steps]);
 
-      notifySuccess(
-        "Upload complete",
-        `Video ready for episode #${order} (${detectedDuration}s). You can publish when ready.`,
-      );
+      return {
+        videoUrl: deliveryUrl,
+        thumbnailUrl: resolvedThumbnailUrl,
+        durationSec: detectedDuration,
+      };
     } catch (error) {
       notifyError("Cloudinary upload failed", error);
+      return null;
     } finally {
       setUploadingMedia(false);
+    }
+  }
+
+  async function handleUploadMedia() {
+    const resolved = await runUpload();
+    setOverlayOpen(false);
+    setOverlayIndeterminate(false);
+    setOverlayPercent(0);
+    if (resolved) {
+      notifySuccess(
+        "Upload complete",
+        `Video ready for ${episodeAppLabel(order)} (${resolved.durationSec}s). Click Publish to add it to the app.`,
+      );
+    }
+  }
+
+  async function handleUploadAndPublish() {
+    if (isAdmin === false) {
+      toast.error(
+        "Cannot publish",
+        `Create adminUsers/${user?.uid ?? "{uid}"} in Firestore first.`,
+      );
+      return;
+    }
+    const resolved = await runUpload();
+    if (!resolved) {
       setOverlayOpen(false);
       setOverlayIndeterminate(false);
       setOverlayPercent(0);
+      return;
+    }
+    setLoading(true);
+    setOverlayOpen(true);
+    setOverlayIndeterminate(true);
+    setOverlayTitle("Publishing episode");
+    setOverlaySubtitle("Writing to Firestore…");
+    try {
+      const result = await persistEpisode(resolved);
+      await finishPublish(result);
+    } catch (error) {
+      notifyError("Publish failed", error);
+    } finally {
+      setLoading(false);
+      setOverlayOpen(false);
+      setOverlayIndeterminate(false);
+      setOverlayPercent(0);
+      setOverlaySteps([]);
     }
   }
 
@@ -596,6 +707,37 @@ export function App() {
         )}
       </header>
 
+      <nav className="app-nav" aria-label="Main">
+        <button
+          type="button"
+          className={`app-nav__item ${view === "upload" ? "is-active" : ""}`}
+          onClick={() => setView("upload")}
+        >
+          Upload
+        </button>
+        <button
+          type="button"
+          className={`app-nav__item ${view === "library" ? "is-active" : ""}`}
+          onClick={() => setView("library")}
+        >
+          Media library
+        </button>
+      </nav>
+
+      {user && isAdmin === false && (
+        <section className="card card--alert">
+          <h2 className="section-title">Cannot publish yet</h2>
+          <p>
+            Your account can upload to Cloudinary, but Firestore rules block{" "}
+            <strong>Publish episode</strong> until an admin document exists:
+          </p>
+          <p>
+            <code>adminUsers/{user.uid}</code> (create in Firebase Console →
+            Firestore).
+          </p>
+        </section>
+      )}
+
       <section className="card card--auth">
         {!user ? (
           <button className="btn btn--primary" type="button" onClick={handleSignIn}>
@@ -618,6 +760,11 @@ export function App() {
         )}
       </section>
 
+      {view === "library" ? (
+        <MediaLibrary userReady={!!user} canDelete={isAdmin !== false} />
+      ) : null}
+
+      {view === "upload" ? (
       <form className="layout" onSubmit={handlePublish}>
         <section className="card">
           <h2 className="section-title">Series</h2>
@@ -675,47 +822,73 @@ export function App() {
 
           {seriesMode === "existing" && (
             <p className="hint">
-              Series ID: <code>{activeSeriesId || "—"}</code>
+              Series ID: <code>{activeSeriesId || "—"}</code> — in the app, open
+              this series by ID (Discover → series → episode list).
             </p>
           )}
 
-          {seriesMode === "new" && (
-            <>
-              <div className="field">
-                <span className="field__label">Cover URL (optional)</span>
-                <input
-                  type="url"
-                  value={seriesCoverUrl}
-                  onChange={(e) => setSeriesCoverUrl(e.target.value)}
-                  placeholder="https://..."
-                />
-              </div>
-              <div className="field-row">
-                <div className="field">
-                  <span className="field__label">Category</span>
-                  <select
-                    value={seriesCategory}
-                    onChange={(e) => setSeriesCategory(e.target.value)}
-                  >
-                    <option value="new">New</option>
-                    <option value="hot">Hot</option>
-                    <option value="adventure">Adventure</option>
-                    <option value="scary">Scary</option>
-                    <option value="anime">Anime</option>
-                    <option value="vip">VIP</option>
-                  </select>
-                </div>
-                <label className="check">
-                  <input
-                    type="checkbox"
-                    checked={seriesIsVip}
-                    onChange={(e) => setSeriesIsVip(e.target.checked)}
-                  />
-                  Series is VIP
-                </label>
-              </div>
-            </>
+          {activeSeriesId && (
+            <div className="episode-catalog">
+              <h3 className="episode-catalog__title">
+                Episodes already in Firestore ({publishedEpisodes.length})
+              </h3>
+              {publishedEpisodes.length === 0 ? (
+                <p className="hint">
+                  No published episodes for this series yet. Upload +{" "}
+                  <strong>Publish episode</strong> to add one.
+                </p>
+              ) : (
+                <ul className="episode-catalog__list">
+                  {publishedEpisodes.map((ep) => (
+                    <li key={ep.id}>
+                      <strong>{episodeAppLabel(ep.order)}</strong>{" "}
+                      <code>{ep.id}</code> · {ep.durationSec}s
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
+
+          {seriesMode === "new" && (
+            <div className="field">
+              <span className="field__label">Cover URL (optional)</span>
+              <input
+                type="url"
+                value={seriesCoverUrl}
+                onChange={(e) => setSeriesCoverUrl(e.target.value)}
+                placeholder="https://..."
+              />
+            </div>
+          )}
+
+          <div className="field-row">
+            <div className="field">
+              <span className="field__label">Category</span>
+              <select
+                value={seriesCategory}
+                onChange={(e) => setSeriesCategory(e.target.value)}
+              >
+                <option value="new">New</option>
+                <option value="hot">Hot</option>
+                <option value="adventure">Adventure</option>
+                <option value="scary">Scary</option>
+                <option value="anime">Anime</option>
+                <option value="vip">VIP</option>
+              </select>
+            </div>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={seriesIsVip}
+                onChange={(e) => setSeriesIsVip(e.target.checked)}
+              />
+              Series is VIP
+            </label>
+          </div>
+          <p className="hint">
+            Category &amp; VIP apply to the whole series and update it on publish.
+          </p>
         </section>
 
         <section className="card">
@@ -728,7 +901,59 @@ export function App() {
               Duration{" "}
               <strong>{durationSec > 0 ? `${durationSec}s` : "—"}</strong>
             </span>
+            {plannedEpisodeId ? (
+              <span className="chip">
+                App label <strong>{episodeAppLabel(order)}</strong>
+              </span>
+            ) : null}
           </div>
+
+          {plannedEpisodeId ? (
+            <div className="publish-target">
+              <p className="publish-target__label">After you publish</p>
+              <dl className="publish-target__grid">
+                <div>
+                  <dt>Firestore document</dt>
+                  <dd>
+                    <code>{plannedEpisodeId}</code>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Shown in mobile app</dt>
+                  <dd>
+                    <strong>{episodeAppLabel(order)}</strong> under &quot;
+                    {seriesTitle || activeSeriesId}&quot;
+                  </dd>
+                </div>
+                {cloudinaryAssetId ? (
+                  <div>
+                    <dt>Cloudinary asset</dt>
+                    <dd>
+                      <code>{cloudinaryAssetId}</code>
+                    </dd>
+                  </div>
+                ) : null}
+              </dl>
+              {isHttpUrl(videoUrl.trim()) && (
+                <p className="hint publish-target__warn">
+                  Video is on Cloudinary but <strong>not in the app</strong>{" "}
+                  until you click <strong>Publish episode</strong>.
+                </p>
+              )}
+            </div>
+          ) : null}
+
+          {cloudinaryMatches.length > 0 && (
+            <div className="card card--inline card--success-soft">
+              <p>
+                This Cloudinary file is already published:{" "}
+                {cloudinaryMatches
+                  .map((m) => `${m.id} (series ${m.seriesId})`)
+                  .join(", ")}
+                . Pull to refresh on that series in the app.
+              </p>
+            </div>
+          )}
 
           <div className="checks">
             <label className="check">
@@ -790,25 +1015,27 @@ export function App() {
 
           <div className="actions">
             <button
-              className="btn btn--primary"
+              className="btn btn--success"
               disabled={
                 !user ||
                 !videoFile ||
                 uploadingMedia ||
                 loading ||
-                !cloudinaryReady
+                !cloudinaryReady ||
+                !activeSeriesId.trim() ||
+                isAdmin === false
               }
               type="button"
-              onClick={handleUploadMedia}
+              onClick={handleUploadAndPublish}
+              title={
+                isAdmin === false
+                  ? "Requires adminUsers/{uid} in Firestore"
+                  : undefined
+              }
             >
-              {uploadingMedia ? "Uploading…" : "Upload to Cloudinary"}
-            </button>
-            <button
-              className="btn btn--success"
-              disabled={!canSubmit || loading || uploadingMedia}
-              type="submit"
-            >
-              {loading ? "Publishing…" : "Publish episode"}
+              {uploadingMedia || loading
+                ? "Working…"
+                : "Upload & Publish to app"}
             </button>
             <button
               className="btn btn--ghost"
@@ -824,10 +1051,47 @@ export function App() {
               Clear &amp; next
             </button>
           </div>
+
+          <details className="advanced-actions">
+            <summary>Advanced: upload and publish separately</summary>
+            <div className="actions">
+              <button
+                className="btn btn--primary"
+                disabled={
+                  !user ||
+                  !videoFile ||
+                  uploadingMedia ||
+                  loading ||
+                  !cloudinaryReady
+                }
+                type="button"
+                onClick={handleUploadMedia}
+              >
+                {uploadingMedia ? "Uploading…" : "1. Upload to Cloudinary"}
+              </button>
+              <button
+                className="btn btn--success"
+                disabled={
+                  !canSubmit || loading || uploadingMedia || isAdmin === false
+                }
+                type="submit"
+                title={
+                  isAdmin === false
+                    ? "Requires adminUsers/{uid} in Firestore"
+                    : undefined
+                }
+              >
+                {loading ? "Publishing…" : "2. Publish episode"}
+              </button>
+            </div>
+          </details>
         </section>
       </form>
+      ) : null}
 
-      <StatusBanner message={status} variant={statusVariant} />
+      {view === "upload" ? (
+        <StatusBanner message={status} variant={statusVariant} />
+      ) : null}
     </main>
   );
 }

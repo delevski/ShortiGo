@@ -10,7 +10,8 @@ type UploadOverlayProps = {
   subtitle: string;
   percent: number;
   indeterminate?: boolean;
-  steps: OverlayStep[];
+  steps?: OverlayStep[];
+  hint?: string;
 };
 
 export function UploadOverlay({
@@ -19,7 +20,8 @@ export function UploadOverlay({
   subtitle,
   percent,
   indeterminate = false,
-  steps,
+  steps = [],
+  hint = "Keep this tab open until the operation completes.",
 }: UploadOverlayProps) {
   if (!open) {
     return null;
@@ -70,9 +72,7 @@ export function UploadOverlay({
           </ul>
         )}
 
-        <p className="upload-overlay__hint">
-          Keep this tab open until upload completes.
-        </p>
+        <p className="upload-overlay__hint">{hint}</p>
       </div>
     </div>
   );

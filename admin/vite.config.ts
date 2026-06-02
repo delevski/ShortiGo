@@ -1,5 +1,6 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import { cloudinaryAdminApi } from "./vite-plugin-cloudinary-admin";
 
 const cloudinaryUploadProxy = {
   "/cloudinary-upload": {
@@ -10,8 +11,11 @@ const cloudinaryUploadProxy = {
   },
 };
 
-export default defineConfig({
-  plugins: [react()],
-  server: { proxy: cloudinaryUploadProxy },
-  preview: { proxy: cloudinaryUploadProxy },
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  return {
+    plugins: [react(), cloudinaryAdminApi(env)],
+    server: { proxy: cloudinaryUploadProxy },
+    preview: { proxy: cloudinaryUploadProxy },
+  };
 });
