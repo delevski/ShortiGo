@@ -14,17 +14,16 @@ Version: 0.1.0+2
 
 ## Cloud Setup
 
-- Firebase projects `shortigo-dev` and `shortigo-prod` were created on 2026-06-02.
+- Firebase project `shortigo-prod` was created on 2026-06-02.
+- Firebase project `shortigo-dev` was deleted/scheduled for deletion on 2026-06-02.
 - Root Firebase config is committed at `.firebaserc` and `firebase.json`.
 - Firestore rules file is committed at `firestore.rules`.
 - Firestore indexes file is committed at `firestore.indexes.json`.
-- Firestore rules and indexes are deployed to `shortigo-dev` and `shortigo-prod`.
-- Storage CORS file is committed at `storage-cors.json`.
-- Storage rules file is committed at `storage.rules`.
-- Storage rules and CORS are blocked until billing is enabled and default buckets are created.
-- Cloud Functions deploy is blocked until the projects are upgraded to Blaze; Cloud Build cannot be enabled on the free plan.
-- Identity Toolkit/Auth API is enabled for `shortigo-dev` and `shortigo-prod`; Auth providers still need Firebase Console configuration.
-- Dev seed script exists, but Firestore writes require a real project and credentials.
+- Firestore rules and indexes are deployed to `shortigo-prod`.
+- Storage CORS file remains in the repo for future paid media hosting, but Storage is not part of the Spark-only setup.
+- Cloud Functions remain in the repo for a future paid backend, but the Flutter app no longer calls them in Spark mode.
+- Identity Toolkit/Auth API is enabled for `shortigo-prod`; Auth providers still need Firebase Console configuration.
+- Demo seed data was written to `shortigo-prod` on 2026-06-02.
 
 ## Manual Device Matrix
 
@@ -44,10 +43,9 @@ Version: 0.1.0+2
 
 ## Required Before Store Submission
 
-- Create or switch `.firebaserc` to real dev/prod Firebase project IDs. Completed for `shortigo-dev` and `shortigo-prod`.
-- Enable billing on both Firebase projects.
-- Initialize default Storage buckets for both Firebase projects.
-- Enable and deploy Cloud Functions after Blaze upgrade.
+- Create or switch `.firebaserc` to the single Firebase project ID. Completed for `shortigo-prod`.
+- Keep Firebase on the Spark plan; do not enable billing.
+- Delete the unused `shortigo-dev` Firebase project. Completed on 2026-06-02.
 - Configure Firebase Auth providers in the console.
 - Provision AdMob, RevenueCat, Sentry, and Firebase Performance.
 - Reinstall CocoaPods with the active macOS Ruby, or install via Homebrew/rbenv and rerun `pod --version`.

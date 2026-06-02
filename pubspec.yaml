@@ -56,7 +56,6 @@ dependencies:
   rxdart: ^0.28.0
   collection: ^1.18.0
   better_player_plus: ^1.0.8
-  cloud_functions: ^5.3.4
 
 dev_dependencies:
   flutter_test:

@@ -26,7 +26,15 @@ service cloud.firestore {
 
     match /users/{uid}/transactions/{txId} {
       allow read: if request.auth != null && request.auth.uid == uid;
-      allow write: if false;
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.userId == uid
+        && request.resource.data.coinsDelta == 0
+        && request.resource.data.bonusDelta is int
+        && request.resource.data.bonusDelta > 0
+        && request.resource.data.bonusDelta <= 12
+        && request.resource.data.type in ['adReward', 'dailyCheckIn'];
+      allow update, delete: if false;
     }
 
     match /users/{uid}/favorites/{sid} {

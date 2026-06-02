@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../domain/entities/transaction.dart' as domain;
 import '../../domain/entities/user.dart';
 import '../../domain/interfaces/user_repository.dart';
 
@@ -40,5 +41,36 @@ class FirestoreUserRepository implements UserRepository {
     await _db.collection('users').doc(userId).update({
       'lastDailyCheckIn': Timestamp.fromDate(at),
     });
+  }
+
+  @override
+  Future<void> grantDemoBonus({
+    required String userId,
+    required domain.TxType type,
+    required int amount,
+    required String reference,
+    DateTime? dailyCheckInAt,
+  }) async {
+    final now = DateTime.now().toUtc();
+    final userRef = _db.collection('users').doc(userId);
+    final txRef = userRef.collection('transactions').doc();
+    final batch = _db.batch();
+
+    batch.update(userRef, {
+      'bonus': FieldValue.increment(amount),
+      if (dailyCheckInAt != null)
+        'lastDailyCheckIn': dailyCheckInAt.toUtc().toIso8601String(),
+    });
+    batch.set(txRef, {
+      'id': txRef.id,
+      'userId': userId,
+      'type': type.name,
+      'coinsDelta': 0,
+      'bonusDelta': amount,
+      'reference': reference,
+      'at': now.toIso8601String(),
+    });
+
+    await batch.commit();
   }
 }

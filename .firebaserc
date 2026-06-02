@@ -1,7 +1,6 @@
 {
   "projects": {
-    "default": "shortigo-dev",
-    "dev": "shortigo-dev",
+    "default": "shortigo-prod",
     "prod": "shortigo-prod"
   }
 }

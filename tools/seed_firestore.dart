@@ -3,7 +3,7 @@ import 'dart:io';
 
 Future<void> main() async {
   final projectId =
-      Platform.environment['FIREBASE_PROJECT_ID'] ?? 'shortigo-dev';
+      Platform.environment['FIREBASE_PROJECT_ID'] ?? 'shortigo-prod';
   final token = await _accessToken();
 
   final client = HttpClient();

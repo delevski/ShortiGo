@@ -32,7 +32,7 @@ Future<void> main(List<String> args) async {
   }
 
   final projectId =
-      Platform.environment['FIREBASE_PROJECT_ID'] ?? 'shortigo-dev';
+      Platform.environment['FIREBASE_PROJECT_ID'] ?? 'shortigo-prod';
   final bucket = Platform.environment['FIREBASE_STORAGE_BUCKET'] ??
       '$projectId.appspot.com';
   final token = await _accessToken();

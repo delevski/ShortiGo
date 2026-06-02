@@ -27,7 +27,7 @@ class Env {
 
   bool get isProd => flavor == AppFlavor.prod;
 
-  /// Built from --dart-define values. Defaults to dev if unset.
+  /// Built from --dart-define values. Defaults to the single Spark project.
   factory Env.fromDefines() {
     const flavorStr = String.fromEnvironment('ENV', defaultValue: 'dev');
     const flavor = flavorStr == 'prod' ? AppFlavor.prod : AppFlavor.dev;
@@ -36,7 +36,7 @@ class Env {
       flavor: flavor,
       firebaseProjectId: const String.fromEnvironment(
         'FIREBASE_PROJECT_ID',
-        defaultValue: 'shortigo-dev',
+        defaultValue: 'shortigo-prod',
       ),
       sentryDsn: const String.fromEnvironment(
         'SENTRY_DSN',

@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers.dart';
+import '../../../domain/entities/transaction.dart';
 import '../../../domain/entities/user.dart';
 
 class RewardsState {
@@ -19,6 +19,10 @@ class RewardsState {
 }
 
 class RewardsNotifier extends AsyncNotifier<RewardsState> {
+  static const _dailyBonus = 5;
+  static const _adBonus = 12;
+  static const _dailyCooldown = Duration(hours: 20);
+
   StreamSubscription<AppUser>? _userSub;
 
   @override
@@ -39,15 +43,40 @@ class RewardsNotifier extends AsyncNotifier<RewardsState> {
 
   Future<void> claimDailyCheckIn() async {
     final current = state.value;
-    try {
-      await FirebaseFunctions.instance
-          .httpsCallable('grantDailyCheckIn')
-          .call<Map<String, dynamic>>();
-    } catch (_) {
+    final auth = ref.read(currentAuthUserProvider).value;
+    final user = current?.user;
+    if (auth == null || user == null) {
+      state = AsyncData(
+        RewardsState(user: user, error: 'Sign in required.'),
+      );
+      return;
+    }
+
+    final now = DateTime.now().toUtc();
+    final last = user.lastDailyCheckIn?.toUtc();
+    if (last != null && now.difference(last) < _dailyCooldown) {
       state = AsyncData(
         RewardsState(
-          user: current?.user,
-          error: 'Already claimed today or sign-in required.',
+          user: user,
+          error: 'Already claimed today. Come back later.',
+        ),
+      );
+      return;
+    }
+
+    try {
+      await ref.read(userRepositoryProvider).grantDemoBonus(
+            userId: auth.uid,
+            type: TxType.dailyCheckIn,
+            amount: _dailyBonus,
+            reference: 'sparkDailyCheckIn',
+            dailyCheckInAt: now,
+          );
+    } catch (error) {
+      state = AsyncData(
+        RewardsState(
+          user: user,
+          error: error.toString(),
         ),
       );
     }
@@ -55,6 +84,14 @@ class RewardsNotifier extends AsyncNotifier<RewardsState> {
 
   Future<void> watchAdForCoins() async {
     final current = state.value;
+    final auth = ref.read(currentAuthUserProvider).value;
+    if (auth == null) {
+      state = AsyncData(
+        RewardsState(user: current?.user, error: 'Sign in required.'),
+      );
+      return;
+    }
+
     state = AsyncData(
       RewardsState(user: current?.user, isWatchingAd: true),
     );
@@ -64,12 +101,12 @@ class RewardsNotifier extends AsyncNotifier<RewardsState> {
       await ad.initialize();
       final amount = await ad.showRewarded();
       if (amount != null) {
-        await FirebaseFunctions.instance
-            .httpsCallable('grantAdReward')
-            .call<Map<String, dynamic>>({
-          'adUnitId': 'rewarded',
-          'adId': DateTime.now().toIso8601String(),
-        });
+        await ref.read(userRepositoryProvider).grantDemoBonus(
+              userId: auth.uid,
+              type: TxType.adReward,
+              amount: _adBonus,
+              reference: 'sparkRewardedAd:${DateTime.now().toIso8601String()}',
+            );
       }
     } catch (error) {
       state = AsyncData(

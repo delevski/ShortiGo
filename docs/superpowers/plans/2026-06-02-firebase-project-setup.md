@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Set up root-level Firebase configuration for new ShortiGo dev/prod projects.
+**Goal:** Set up root-level Firebase configuration for the single no-cost ShortiGo Spark project.
 
-**Architecture:** Keep Firebase CLI files at repo root. Point Functions to `cloud_functions/functions`, Firestore to `firestore.rules`, and Storage to `storage.rules`.
+**Architecture:** Keep Firebase CLI files at repo root. Deploy only Firestore rules and indexes so the project remains compatible with the Spark plan.
 
-**Tech Stack:** Firebase CLI, Firestore rules, Firebase Storage rules, Cloud Functions Node.js 20, FlutterFire config placeholders.
+**Tech Stack:** Firebase CLI, Firestore rules, Firestore indexes, FlutterFire config placeholders.
 
 ---
 
@@ -16,22 +16,25 @@
 - Create: `.firebaserc`
 - Create: `firebase.json`
 - Create: `firestore.indexes.json`
-- Delete: `cloud_functions/.firebaserc`
-- Delete: `cloud_functions/firebase.json`
+- Modify: `firebase.json`
 
-- [ ] Create root `.firebaserc` mapping `default` and `dev` to `shortigo-dev`, and `prod` to `shortigo-prod`.
-- [ ] Create root `firebase.json` with Functions source `cloud_functions/functions`, Firestore rules `firestore.rules`, Firestore indexes `firestore.indexes.json`, and Storage rules `storage.rules`.
+- [ ] Create root `.firebaserc` mapping `default` and `prod` to `shortigo-prod`.
+- [ ] Create root `firebase.json` with Firestore rules `firestore.rules` and Firestore indexes `firestore.indexes.json`.
 - [ ] Remove duplicate Firebase config files from `cloud_functions/`.
-- [ ] Run `firebase use dev` from repo root. Expected: active project alias is `dev`.
+- [ ] Run `firebase use prod` from repo root. Expected: active project alias is `prod`.
 
-### Task 2: Storage Rules And Project Defaults
+### Task 2: Spark Project Defaults
 
 **Files:**
-- Create: `storage.rules`
+- Modify: `lib/bootstrap/firebase_options_dev.dart`
 - Modify: `lib/bootstrap/firebase_options_prod.dart`
+- Modify: `lib/core/env/env.dart`
+- Modify: `tools/seed_firestore.dart`
+- Modify: `tools/upload_episode.dart`
 
-- [ ] Add read-only public Storage rules for published media under `series/**`; deny client writes.
-- [ ] Update prod placeholder Firebase project ID/storage bucket to `shortigo-prod`.
+- [ ] Point dev and prod placeholders at `shortigo-prod`.
+- [ ] Point CLI tool defaults at `shortigo-prod`.
+- [ ] Keep Storage tooling as optional future upload support, but do not deploy Storage in Spark mode.
 
 ### Task 3: Docs And Function Script
 
@@ -40,9 +43,8 @@
 - Modify: `cloud_functions/functions/package.json`
 - Modify: `docs/release-checklist-v1.md`
 
-- [ ] Update README backend setup to use root Firebase config and new project IDs.
-- [ ] Update Functions deploy script so `npm run deploy` runs Firebase deploy from repo root.
-- [ ] Update release checklist to reflect root config and `shortigo-prod`.
+- [ ] Update README backend setup to use root Firebase config and one Spark project.
+- [ ] Update release checklist to remove Blaze/billing requirements.
 
 ### Task 4: Verify And Commit
 
@@ -50,7 +52,7 @@
 - All modified setup files.
 
 - [ ] Run `firebase projects:list`.
-- [ ] Attempt to create or select `shortigo-dev` and `shortigo-prod`.
-- [ ] Run `firebase deploy --only firestore:rules,storage`.
+- [ ] Select `shortigo-prod`.
+- [ ] Run `firebase deploy --only firestore:rules,firestore:indexes`.
 - [ ] Run `npm run build` in `cloud_functions/functions`.
 - [ ] Commit all repo-side Firebase setup changes.

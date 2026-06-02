@@ -2,29 +2,28 @@
 
 ## Goal
 
-Configure the ShortiGo repo for two new Firebase projects: `shortigo-dev` for development and `shortigo-prod` for production.
+Configure the ShortiGo repo for one no-cost Firebase Spark project: `shortigo-prod`.
 
 ## Architecture
 
-Firebase CLI configuration will live at the repo root so deploy commands run from `/Users/corphd/Desktop/Or codes projects/ShortiGo`. Cloud Functions source stays in `cloud_functions/functions`, and root `firebase.json` points to that source directory.
+Firebase CLI configuration lives at the repo root so deploy commands run from `/Users/corphd/Desktop/Or codes projects/ShortiGo`. Root `firebase.json` deploys only Firestore rules and indexes, which keeps the project compatible with the Spark plan.
 
 ## Project Aliases
 
-- `default`: `shortigo-dev`
-- `dev`: `shortigo-dev`
+- `default`: `shortigo-prod`
 - `prod`: `shortigo-prod`
 
 ## Firebase Resources
 
 - Firestore rules are deployed from `firestore.rules`.
-- Storage rules are deployed from `storage.rules`.
-- Cloud Functions are deployed from `cloud_functions/functions` on Node.js 20.
-- Storage CORS is applied with `storage-cors.json`.
+- Storage rules and CORS are not deployed in Spark mode.
+- Cloud Functions are kept in the repository for a future paid production backend, but the app does not call them in Spark mode.
+- Reward and VIP flows are demo-only client-side behavior in Spark mode.
 
 ## Scripts And Documentation
 
-The repo should include a backend setup guide with exact commands for creating projects, selecting aliases, enabling services, deploying rules/functions, applying CORS, and seeding content.
+The repo should include a backend setup guide with exact commands for selecting the project, deploying Firestore rules/indexes, and seeding content.
 
 ## Known External Requirements
 
-Firebase project creation, service enablement, OAuth/Auth provider setup, billing, AdMob, RevenueCat, and Sentry still require authenticated account access and console-side configuration.
+Firebase project creation, OAuth/Auth provider setup, AdMob, RevenueCat, and Sentry still require authenticated account access and console-side configuration. Billing is intentionally out of scope for this Spark-only setup.

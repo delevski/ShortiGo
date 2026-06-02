@@ -1,12 +1,12 @@
 # ShortiGo
 
 A TikTok-style **short-drama streaming app** for iOS and Android, built with Flutter.
-Videos play instantly on swipe, content is organized into series, and revenue flows from
-**VIP subscriptions** and **rewarded ads**.
+Videos play instantly on swipe, content is organized into series, and the current
+backend is configured for one **no-cost Firebase Spark** project.
 
 > Status: **v1 MVP — feature-complete, pre-release.** The app builds, analyzes clean,
 > and passes its unit/widget/integration tests. It is **not yet shippable** because it
-> still needs a live Firebase project, release signing, and a working native build
+> still needs Firebase Auth provider/app registration, release signing, and a working native build
 > toolchain. See [What's left](#whats-left) for the exact gaps.
 
 ---
@@ -24,7 +24,7 @@ Videos play instantly on swipe, content is organized into series, and revenue fl
 - [Getting started](#getting-started)
 - [Running the app (flavors & config)](#running-the-app-flavors--config)
 - [Backend setup (Firebase)](#backend-setup-firebase)
-- [Cloud Functions](#cloud-functions)
+- [Future paid backend](#future-paid-backend)
 - [Admin tooling](#admin-tooling)
 - [Testing](#testing)
 - [Build & release](#build--release)
@@ -52,9 +52,7 @@ flowchart TB
   subgraph Firebase["Google Firebase"]
     Auth["Firebase Auth"]
     FS["Cloud Firestore"]
-    Storage["Firebase Storage"]
     Perf["Firebase Performance"]
-    CF["Cloud Functions"]
   end
 
   subgraph External["Third-party"]
@@ -65,14 +63,10 @@ flowchart TB
 
   Data --> Auth
   Data --> FS
-  Data --> Storage
   Data --> Perf
   Data --> AdMob
   Data --> RC
   Client --> Sentry
-  AdMob -.->|ad completed| CF
-  RC -.->|webhook| CF
-  CF --> FS
 ```
 
 ---
@@ -85,16 +79,17 @@ flowchart TB
 - **Shorts feed** — full-screen vertical `PageView` with a 3-controller pre-cache
   window so the next video is already buffered before you swipe (target: tap-to-play
   < 350 ms, zero network requests per swipe).
-- **Episode player** — full-screen playback via `better_player`, with fresh Storage
-  URL minting on open.
+- **Episode player** — full-screen playback via `better_player`, using episode
+  `videoUrl` values stored in Firestore.
 - **Auth** — email/password and Google Sign-In (Firebase Auth). A user document is
   created on first sign-in.
-- **Rewards** — daily check-in and watch-an-ad-for-bonus, both credited
-  **server-side** through Cloud Functions.
+- **Rewards** — daily check-in and watch-an-ad-for-bonus are demo credits written
+  client-side for the Spark/free-tier MVP.
 - **Wallet** — coins (paid) and bonus (earned) balances plus a transaction ledger,
   shown on the profile page.
 - **VIP subscription** — RevenueCat-backed subscribe flow; locked episodes gate
-  behind a subscribe CTA; VIP status granted server-side via webhook.
+  behind a subscribe CTA. Server-side webhook validation is kept as a future paid
+  backend option.
 - **Observability** — Sentry crash reporting + route breadcrumbs, Firebase
   Performance traces on cold start / feed load / playback, memory-pressure handling.
 
@@ -107,12 +102,12 @@ flowchart TB
 | Routing      | go_router                               |
 | Auth         | Firebase Auth + google_sign_in          |
 | Database     | Cloud Firestore                         |
-| Storage      | Firebase Storage (swappable via `VideoSource`) |
+| Media        | Public episode URLs in Firestore (swappable via `VideoSource`) |
 | Local cache  | drift (SQLite)                          |
 | Video        | better_player_plus                      |
 | Ads          | google_mobile_ads (AdMob)               |
 | IAP          | purchases_flutter (RevenueCat)          |
-| Backend      | Cloud Functions (Node/TypeScript)       |
+| Backend      | Firebase Spark: Auth + Firestore        |
 | Errors       | sentry_flutter                          |
 | Performance  | firebase_performance                    |
 
@@ -140,7 +135,7 @@ flowchart TB
 
   subgraph Data["Data"]
     Firestore["Firestore repos"]
-    VideoSrc["VideoSource\n(Firebase Storage)"]
+    VideoSrc["VideoSource\n(public URL / future Storage)"]
     Ads["AdMob gateway"]
     IAP["RevenueCat gateway"]
     Drift["drift local cache"]
@@ -163,14 +158,14 @@ flowchart LR
   Notifier["Notifier"] --> VS["VideoSource"]
   Notifier --> AG["AdGateway"]
   Notifier --> IG["IapGateway"]
-  VS --> FB["Firebase Storage\n(v1)"]
+  VS --> FB["Firestore episode.videoUrl\n(v1 Spark)"]
   VS -.-> CDN["CDN / Stream\n(v2)"]
   AG --> AdMob["AdMob"]
   IG --> RC["RevenueCat"]
 ```
 
 Provider swaps are isolated behind interfaces (`VideoSource`, `IapGateway`,
-`AdGateway`, repositories), so e.g. moving from Firebase Storage to a CDN is a
+`AdGateway`, repositories), so e.g. moving from public URLs to Storage/CDN is a
 single-file change.
 
 ## App navigation
@@ -222,23 +217,20 @@ sequenceDiagram
   Player-->>User: playback under 100ms
 ```
 
-### Watch ad → bonus (server-authoritative)
+### Watch ad → bonus (Spark demo)
 
 ```mermaid
 sequenceDiagram
   participant User
   participant App
   participant AdMob
-  participant CF as grantAdReward
   participant FS as Firestore
 
   User->>App: tap Watch Ad on /rewards
   App->>AdMob: show rewarded ad
   AdMob-->>App: onUserEarnedReward
-  App->>CF: callable(adUnitId, …)
-  CF->>CF: rate-limit + validate
-  CF->>FS: append Transaction
-  CF->>FS: increment User.bonus
+  App->>FS: append demo Transaction
+  App->>FS: increment User.bonus
   FS-->>App: user doc snapshot
   App-->>User: wallet updates on /profile
 ```
@@ -251,15 +243,14 @@ sequenceDiagram
   participant App
   participant Store as App Store / Play
   participant RC as RevenueCat
-  participant CF as grantVipSubscription
   participant FS as Firestore
 
   User->>App: tap Subscribe on /profile
   App->>RC: purchase package
   RC->>Store: native purchase sheet
   Store-->>RC: receipt
-  RC->>CF: webhook (signed)
-  CF->>FS: isVip = true, vipExpiresAt
+  RC-->>App: purchase result
+  Note over App,FS: Spark mode does not deploy webhook validation
   FS-->>App: user doc listener
   App-->>User: VIP content unlocked
 ```
@@ -340,17 +331,15 @@ erDiagram
   }
 ```
 
-**Wallet trust boundary:** `coins`/`bonus` are server-authoritative. The client never
-writes them — every change goes through a Cloud Function that appends a ledger entry and
-applies a `FieldValue.increment`. The client only subscribes to the user doc and re-renders.
+**Wallet trust boundary:** in Spark mode, bonus credits are demo-only client writes.
+This is acceptable for a no-cost MVP demo, but production monetization needs a future
+server-authoritative backend.
 
 ```mermaid
 flowchart LR
   Client["Flutter client"] -->|"read wallet"| UserDoc["users/{uid}"]
-  Client -->|"trigger only"| CF["Cloud Functions"]
-  CF -->|"write only"| Ledger["transactions"]
-  CF -->|"increment"| UserDoc
-  Client -.->|"never writes coins/bonus"| UserDoc
+  Client -->|"demo write"| Ledger["transactions"]
+  Client -->|"demo increment"| UserDoc
 ```
 
 ## Getting started
@@ -359,7 +348,7 @@ flowchart LR
 
 - Flutter `>=3.22.0` with Dart `>=3.4.0`
 - Xcode + CocoaPods (iOS) and Android SDK + NDK (Android)
-- Node.js 18+ (for Cloud Functions)
+- Node.js 18+ (only for compiling optional future Cloud Functions)
 - Firebase CLI (`npm i -g firebase-tools`) and the FlutterFire CLI for backend work
 
 ### Install
@@ -371,9 +360,9 @@ dart run build_runner build --delete-conflicting-outputs   # freezed / json / ri
 
 ## Running the app (flavors & config)
 
-Two flavors (`dev`, `prod`) are selected at build time via `--dart-define=ENV=…`.
+Two flavors (`dev`, `prod`) are still accepted at build time via `--dart-define=ENV=…`.
 All secrets are injected with `--dart-define` (defaults point at AdMob **test** IDs and
-the `shortigo-dev` project).
+the single `shortigo-prod` Spark project).
 
 ```bash
 # Dev (defaults are fine for local runs without real keys)
@@ -395,34 +384,28 @@ See `lib/core/env/env.dart` for the full list of supported defines and their def
 
 ## Backend setup (Firebase)
 
-Root-level Firebase config is committed for two new projects:
+Root-level Firebase config is committed for one Spark/free-tier project:
 
-- `dev` / `default`: `shortigo-dev`
+- `default`: `shortigo-prod`
 - `prod`: `shortigo-prod`
 
-1. Create the `shortigo-dev` and `shortigo-prod` Firebase projects, or edit
-   `.firebaserc` if different globally-unique project IDs are required.
-2. Enable Firestore, Storage, Auth, Cloud Functions, and required Google Cloud APIs.
+1. Keep the project on Spark; do not enable billing.
+2. Enable Firestore and Firebase Auth.
 3. Generate real `firebase_options_*.dart` with `flutterfire configure` per flavor.
-4. Deploy rules and apply Storage CORS:
+4. Deploy Firestore rules and indexes:
 
 ```bash
-firebase use dev
-firebase deploy --only firestore:rules,storage
-gsutil cors set storage-cors.json gs://shortigo-dev.appspot.com
-
 firebase use prod
-firebase deploy --only firestore:rules,storage
-gsutil cors set storage-cors.json gs://shortigo-prod.appspot.com
+firebase deploy --only firestore:rules,firestore:indexes
 ```
 
-5. Define the composite indexes listed in the design spec
-   (`docs/superpowers/specs/2026-06-01-shortigo-design.md`, §5) via
-   `firestore.indexes.json`.
+5. Use public demo media URLs in Firestore. Firebase Storage and Cloud Functions are
+   intentionally not deployed in Spark mode.
 
-## Cloud Functions
+## Future paid backend
 
-TypeScript functions live in `cloud_functions/functions/`:
+TypeScript functions still live in `cloud_functions/functions/` for a future paid
+production backend:
 
 - `grantAdReward` — verifies a rewarded-ad event (rate-limited) and credits bonus.
 - `grantDailyCheckIn` — enforces the once-per-day window and credits bonus.
@@ -432,17 +415,18 @@ TypeScript functions live in `cloud_functions/functions/`:
 cd cloud_functions/functions
 npm install
 npm run build
-npm run deploy
 ```
+
+Do not run `npm run deploy` unless you intentionally upgrade to Blaze. Cloud Functions
+deployment requires a billing account.
 
 ## Admin tooling
 
 - `tools/seed_firestore.dart` — seed demo series/episodes into a project.
-- `tools/upload_episode.dart` — upload an episode video + thumbnail and set
-  `Cache-Control` headers.
+- `tools/upload_episode.dart` — future paid-mode upload helper for Storage/GCS.
 
 ```bash
-# Requires gcloud auth; reads FIREBASE_PROJECT_ID / FIREBASE_STORAGE_BUCKET from env
+# Requires gcloud auth and a Storage bucket; not used in Spark-only mode
 dart run tools/upload_episode.dart <seriesId> <order> <video.mp4> <thumb.jpg> [isVip]
 ```
 
@@ -456,7 +440,7 @@ flutter test integration_test/app_test.dart     # cold-start integration smoke (
 
 Current coverage: domain entities (JSON round-trips, defaults), the discover notifier,
 and core widgets (series card, error view, bottom-nav navigation). Wallet/rewards/IAP
-notifiers and Cloud Functions are **not yet** unit-tested.
+notifiers and optional Cloud Functions are **not yet** unit-tested.
 
 ## Build & release
 
@@ -474,15 +458,13 @@ as-is**. Concrete blockers, roughly in priority order:
 
 **Backend / infrastructure (hard blockers)**
 
-- [x] Root `.firebaserc`, `firebase.json`, `firestore.indexes.json`, Firestore rules,
-      Storage rules, and Storage CORS config are committed.
-- [x] Firebase projects `shortigo-dev` and `shortigo-prod` are created.
-- [x] Firestore databases, rules, and indexes are deployed for dev and prod.
-- [x] Identity Toolkit/Auth API is enabled for dev and prod.
-- [ ] Billing is not enabled yet; Storage bucket creation and Cloud Functions deploy
-      are blocked until both projects are upgraded to Blaze.
-- [ ] Firebase Storage buckets are not initialized yet, so Storage rules/CORS are not
-      deployed.
+- [x] Root `.firebaserc`, `firebase.json`, `firestore.indexes.json`, and Firestore
+      rules are committed.
+- [x] Firebase project `shortigo-prod` is created.
+- [x] Firestore database, rules, and indexes are deployed for `shortigo-prod`.
+- [x] Demo Firestore data is seeded into `shortigo-prod`.
+- [x] Identity Toolkit/Auth API is enabled for `shortigo-prod`.
+- [x] Unused Firebase project `shortigo-dev` was deleted/scheduled for deletion.
 - [ ] `firebase_options_*.dart` are placeholders — regenerate with `flutterfire configure`.
 - [ ] Firebase Auth providers, RevenueCat, Sentry, and AdMob accounts/keys are not wired
       yet; defaults are empty or Google test IDs.
@@ -501,8 +483,8 @@ as-is**. Concrete blockers, roughly in priority order:
       UI is not built (the Firestore `favorites` collection and rules already exist).
 - [ ] No unauthenticated onboarding/category-preview: the app redirects straight to
       `/login`, whereas the spec called for a preview-before-signup screen.
-- [ ] Cloud Functions exist but are untested against live AdMob/RevenueCat events
-      (e.g. webhook HMAC signature verification needs end-to-end validation).
+- [ ] Rewards/VIP are Spark-mode demo flows. Production-grade server validation requires
+      a future paid backend or another no-cost backend provider.
 
 **QA**
 
