@@ -6,8 +6,9 @@ Version: 0.1.0+2
 
 ## Automated Checks
 
-- Flutter analyze: passed on 2026-06-01.
-- Flutter unit/widget tests: passed on 2026-06-01.
+- Flutter analyze: passed on 2026-06-02.
+- Flutter unit/widget tests: passed on 2026-06-02.
+- Admin Studio build: passed on 2026-06-02 with Vite's Firebase bundle-size warning.
 - Integration cold-start test: passed on Android emulator on 2026-06-01.
 - iOS release build: blocked locally. `flutter build ios --release --no-codesign` stops because CocoaPods is installed with a broken Ruby shebang at `/usr/local/bin/pod`.
 - Android release AAB: passed on 2026-06-02. `flutter build appbundle --release --dart-define=ENV=prod ...` produced `build/app/outputs/bundle/release/app-release.aab` (59.5MB).
@@ -21,6 +22,8 @@ Version: 0.1.0+2
 - Firestore rules file is committed at `firestore.rules`.
 - Firestore indexes file is committed at `firestore.indexes.json`.
 - Firestore rules and indexes are deployed to `shortigo-prod`.
+- Firestore rules now allow admin publishing only for users with an `admin: true`
+  custom claim or an `adminUsers/{uid}` allowlist document.
 - Android Firebase app is registered for `com.shortigo.shortigo`.
 - iOS Firebase app is registered for `com.shortigo.shortigo`.
 - Android debug SHA-1/SHA-256 fingerprints are registered for Google Sign-In.
@@ -28,6 +31,8 @@ Version: 0.1.0+2
 - Storage CORS file remains in the repo for future paid media hosting, but Storage is not part of the Spark-only setup.
 - Cloud Functions remain in the repo for a future paid backend, but the Flutter app no longer calls them in Spark mode.
 - Demo episode videos use direct HTTPS URLs, so Spark mode does not require Firebase Storage media hosting.
+- Admin Studio uploads videos to Cloudinary and publishes direct HTTPS episode URLs, so
+  new uploads can stay on the Spark/free Firebase setup.
 - Identity Toolkit/Auth API is enabled for `shortigo-prod`; Email/Password and Google providers are configured.
 - Demo seed data was written to `shortigo-prod` on 2026-06-02.
 
