@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
@@ -21,7 +21,10 @@ import { auth, db, firebaseConfigError } from "./firebase";
 import { FileDropzone } from "./components/FileDropzone";
 import { MediaPreview } from "./components/MediaPreview";
 import { StatusBanner } from "./components/StatusBanner";
+import { useToast } from "./components/ToastStack";
 import { UploadOverlay } from "./components/UploadOverlay";
+import { AppError, toUserMessage } from "./lib/appError";
+import { logError, logInfo } from "./lib/logger";
 import {
   cloudinaryConfigError,
   cloudinaryGeneratedThumbnailUrl,
@@ -201,6 +204,28 @@ export function App() {
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [replaceExisting, setReplaceExisting] = useState(false);
   const [status, setStatus] = useState("Ready");
+  const toast = useToast();
+
+  const notifyError = useCallback(
+    (title: string, error: unknown) => {
+      const message = toUserMessage(error);
+      const details =
+        error instanceof AppError ? error.details : undefined;
+      logError(title, error, details);
+      toast.error(title, message);
+      setStatus(`Failed: ${message}`);
+    },
+    [toast],
+  );
+
+  const notifySuccess = useCallback(
+    (title: string, message: string) => {
+      logInfo(title, { message });
+      toast.success(title, message);
+      setStatus(message);
+    },
+    [toast],
+  );
   const [loading, setLoading] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [overlayOpen, setOverlayOpen] = useState(false);
@@ -324,7 +349,7 @@ export function App() {
     await signInWithPopup(auth, provider);
   }
 
-  async function handlePublish(event: React.FormEvent) {
+  async function handlePublish(event: FormEvent) {
     event.preventDefault();
     if (!canSubmit || !db) {
       return;
@@ -395,12 +420,12 @@ export function App() {
       setSelectedSeriesId(publishedSeriesId);
       await refreshNextEpisodeMeta(publishedSeriesId);
 
-      setStatus(
-        `Published ${episodeId}. Series "${safeSeriesId}" now has ${stats.episodeCount} episode(s).`,
+      notifySuccess(
+        "Published",
+        `Episode ${episodeId} is live. Series "${safeSeriesId}" has ${stats.episodeCount} episode(s).`,
       );
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      setStatus(`Failed: ${message}`);
+      notifyError("Publish failed", error);
     } finally {
       setLoading(false);
       setOverlayOpen(false);
@@ -411,15 +436,18 @@ export function App() {
 
   async function handleUploadMedia() {
     if (!videoFile) {
+      toast.error("Upload", "Select a video file first.");
       setStatus("Failed: select a video file first.");
       return;
     }
     const configError = cloudinaryConfigError();
     if (configError) {
+      toast.error("Cloudinary not configured", configError);
       setStatus(`Failed: ${configError}`);
       return;
     }
     if (!activeSeriesId.trim()) {
+      toast.error("Upload", "Choose or create a series first.");
       setStatus("Failed: choose or create a series first.");
       return;
     }
@@ -510,12 +538,12 @@ export function App() {
       steps = markStep(steps, stepIndex, true, false);
       setOverlaySteps([...steps]);
 
-      setStatus(
-        `Cloudinary ready. Episode #${order}, duration ${detectedDuration}s.`,
+      notifySuccess(
+        "Upload complete",
+        `Video ready for episode #${order} (${detectedDuration}s). You can publish when ready.`,
       );
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      setStatus(`Failed: ${message}`);
+      notifyError("Cloudinary upload failed", error);
     } finally {
       setUploadingMedia(false);
       setOverlayOpen(false);
@@ -789,6 +817,7 @@ export function App() {
               onClick={() => {
                 resetEpisodeForm(true);
                 void refreshNextEpisodeMeta(activeSeriesId);
+                toast.info("Form cleared", "Ready for the next upload.");
                 setStatus("Form cleared. Ready for next upload.");
               }}
             >

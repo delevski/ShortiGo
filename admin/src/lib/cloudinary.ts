@@ -1,3 +1,10 @@
+import { logError, logInfo } from "./logger";
+import {
+  assertFileWithinLimit,
+  buildUploadError,
+} from "./uploadErrors";
+import { AppError } from "./appError";
+
 export type CloudinaryUploadResult = {
   secure_url: string;
   public_id: string;
@@ -9,6 +16,8 @@ export type UploadProgress = {
   loaded: number;
   total: number;
 };
+
+export { formatFileSize } from "./format";
 
 export function cloudinaryConfigError(): string | null {
   if (!import.meta.env.VITE_CLOUDINARY_CLOUD_NAME) {
@@ -37,6 +46,9 @@ export function cloudinaryGeneratedThumbnailUrl(
 }
 
 function useCloudinaryUploadProxy(): boolean {
+  if (import.meta.env.VITE_CLOUDINARY_DIRECT_UPLOAD === "true") {
+    return false;
+  }
   if (import.meta.env.DEV) {
     return true;
   }
@@ -67,6 +79,16 @@ export function uploadToCloudinaryWithProgress(
   const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET as string;
   const url = cloudinaryUploadUrl(cloudName, resourceType);
 
+  assertFileWithinLimit(file, resourceType);
+
+  logInfo("Cloudinary upload started", {
+    resourceType,
+    fileName: file.name,
+    fileSize: file.size,
+    viaProxy: useCloudinaryUploadProxy(),
+    url,
+  });
+
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const form = new FormData();
@@ -84,42 +106,57 @@ export function uploadToCloudinaryWithProgress(
     xhr.addEventListener("load", () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
-          resolve(JSON.parse(xhr.responseText) as CloudinaryUploadResult);
+          const result = JSON.parse(
+            xhr.responseText,
+          ) as CloudinaryUploadResult;
+          logInfo("Cloudinary upload succeeded", {
+            resourceType,
+            fileName: file.name,
+            publicId: result.public_id,
+            duration: result.duration,
+          });
+          resolve(result);
         } catch {
-          reject(new Error("Invalid Cloudinary response"));
+          reject(
+            new AppError(
+              "Cloudinary returned an invalid response (not JSON).",
+              "UPLOAD_INVALID_RESPONSE",
+              { status: xhr.status, responsePreview: xhr.responseText.slice(0, 200) },
+            ),
+          );
         }
         return;
       }
+
       reject(
-        new Error(
-          `Cloudinary upload failed (${xhr.status}): ${xhr.responseText}`,
-        ),
+        buildUploadError({
+          status: xhr.status,
+          responseText: xhr.responseText,
+          fileName: file.name,
+          fileSizeBytes: file.size,
+          resourceType,
+          uploadUrl: url,
+        }),
       );
     });
 
     xhr.addEventListener("error", () => {
-      reject(
-        new Error(
-          "Upload blocked (network/CORS). Restart the dev server after pulling latest changes, or allow your domain in Cloudinary Settings → Security.",
-        ),
+      const err = new AppError(
+        useCloudinaryUploadProxy()
+          ? "Network error while uploading (dev proxy). Restart `npm run dev`, or set VITE_CLOUDINARY_DIRECT_UPLOAD=true and add localhost under Cloudinary Settings → Security → Allowed fetch domains."
+          : "Network error while uploading. Add this site under Cloudinary Settings → Security → Allowed fetch domains.",
+        "UPLOAD_NETWORK_ERROR",
+        { uploadUrl: url, fileName: file.name },
       );
+      logError("Cloudinary upload network error", err, { uploadUrl: url });
+      reject(err);
     });
 
     xhr.addEventListener("abort", () => {
-      reject(new Error("Upload cancelled"));
+      reject(new AppError("Upload cancelled.", "UPLOAD_ABORTED"));
     });
 
     xhr.open("POST", url);
     xhr.send(form);
   });
-}
-
-export function formatFileSize(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  }
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  }
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

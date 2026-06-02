@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { formatFileSize } from "../lib/cloudinary";
+import { formatFileSize } from "../lib/format";
 
 type FileDropzoneProps = {
   label: string;

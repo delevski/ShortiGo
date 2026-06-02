@@ -49,3 +49,9 @@ See `docs/crm-upload-schema.md` for the full schema.
 If you host the admin app on a real domain later, add that origin in Cloudinary Console:
 
 **Settings → Security → Allowed fetch domains** (e.g. `http://localhost:5173`, your production URL).
+
+## Upload errors & 413 (file too large)
+
+- Toasts and `[ShortiGo Studio]` console logs explain failures (CORS, 413, preset/auth, Firestore).
+- **HTTP 413** means Cloudinary rejected the file size. Compress the video or raise **max file size** on your upload preset in Cloudinary Console → Upload presets.
+- Optional env limits (checked before upload): `VITE_CLOUDINARY_MAX_VIDEO_MB` (default 100), `VITE_CLOUDINARY_MAX_IMAGE_MB` (default 10).
