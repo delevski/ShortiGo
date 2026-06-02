@@ -13,7 +13,14 @@ class FirebaseStorageVideoSource implements VideoSource {
     required String episodeId,
     required String storagePath,
   }) async {
+    if (isDirectVideoUrl(storagePath)) {
+      return storagePath;
+    }
     final ref = _storage.ref(storagePath);
     return ref.getDownloadURL();
   }
+}
+
+bool isDirectVideoUrl(String value) {
+  return value.startsWith('http://') || value.startsWith('https://');
 }

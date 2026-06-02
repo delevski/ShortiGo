@@ -449,7 +449,7 @@ flutter build appbundle --release --dart-define=ENV=prod ...    # Android (Play)
 flutter build ios --release --dart-define=ENV=prod ...          # iOS (App Store)
 ```
 
-Android release bundling is verified locally; store upload still needs release signing.
+Android release bundling and local upload signing are verified.
 iOS still requires CocoaPods/toolchain repair — see below.
 
 ## What's left
@@ -475,8 +475,7 @@ as-is**. Concrete blockers, roughly in priority order:
 
 - [ ] iOS release build blocked: CocoaPods has a broken Ruby shebang at `/usr/local/bin/pod`.
 - [x] Android release AAB builds successfully with the local SDK/NDK toolchain.
-- [ ] Android release signing not configured — `android/app/build.gradle.kts` still
-      uses the **debug** signing config.
+- [x] Android release signing uses local ignored `android/key.properties` when present.
 
 **Product gaps**
 

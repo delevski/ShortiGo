@@ -119,8 +119,7 @@ class _ShortsPageState extends ConsumerState<ShortsPage> {
           return ref.read(videoSourceProvider).playableUrl(
                 seriesId: episode.seriesId,
                 episodeId: episode.id,
-                storagePath:
-                    'series/${episode.seriesId}/episodes/${episode.id}.mp4',
+                storagePath: episode.videoUrl,
               );
         },
       );

@@ -44,9 +44,7 @@ Future<void> main() async {
           fields: {
             'seriesId': id,
             'order': j,
-            'videoUrl':
-                'https://commondatastorage.googleapis.com/gtv-videos-bucket/'
-                    'sample/BigBuckBunny.mp4',
+            'videoUrl': 'https://www.w3schools.com/html/mov_bbb.mp4',
             'thumbnailUrl': 'https://picsum.photos/seed/${id}_$j/600/1067',
             'durationSec': 60,
             'isVipLocked': category == 'vip',

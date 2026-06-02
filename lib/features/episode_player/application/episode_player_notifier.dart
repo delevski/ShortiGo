@@ -46,7 +46,7 @@ class EpisodePlayerNotifier
       final url = await videoSource.playableUrl(
         seriesId: args.seriesId,
         episodeId: args.episodeId,
-        storagePath: 'series/${args.seriesId}/episodes/${args.episodeId}.mp4',
+        storagePath: episode.videoUrl,
       );
 
       final controller = BetterPlayerController(
