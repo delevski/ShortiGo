@@ -20,6 +20,10 @@ Version: 0.1.0+2
 - Firestore rules file is committed at `firestore.rules`.
 - Firestore indexes file is committed at `firestore.indexes.json`.
 - Firestore rules and indexes are deployed to `shortigo-prod`.
+- Android Firebase app is registered for `com.shortigo.shortigo`.
+- iOS Firebase app is registered for `com.shortigo.shortigo`.
+- Android debug SHA-1/SHA-256 fingerprints are registered for Google Sign-In.
+- Platform config files are written at `android/app/google-services.json` and `ios/Runner/GoogleService-Info.plist`.
 - Storage CORS file remains in the repo for future paid media hosting, but Storage is not part of the Spark-only setup.
 - Cloud Functions remain in the repo for a future paid backend, but the Flutter app no longer calls them in Spark mode.
 - Identity Toolkit/Auth API is enabled for `shortigo-prod`; Auth providers still need Firebase Console configuration.
@@ -46,7 +50,7 @@ Version: 0.1.0+2
 - Create or switch `.firebaserc` to the single Firebase project ID. Completed for `shortigo-prod`.
 - Keep Firebase on the Spark plan; do not enable billing.
 - Delete the unused `shortigo-dev` Firebase project. Completed on 2026-06-02.
-- Configure Firebase Auth providers in the console.
+- Configure Firebase Auth providers in the console. Completed for Email/Password and Google on 2026-06-02.
 - Provision AdMob, RevenueCat, Sentry, and Firebase Performance.
 - Reinstall CocoaPods with the active macOS Ruby, or install via Homebrew/rbenv and rerun `pod --version`.
 - Install Android command-line tools, accept Android licenses, reinstall a complete NDK, and rerun `flutter doctor -v`.

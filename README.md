@@ -465,9 +465,10 @@ as-is**. Concrete blockers, roughly in priority order:
 - [x] Demo Firestore data is seeded into `shortigo-prod`.
 - [x] Identity Toolkit/Auth API is enabled for `shortigo-prod`.
 - [x] Unused Firebase project `shortigo-dev` was deleted/scheduled for deletion.
-- [ ] `firebase_options_*.dart` are placeholders — regenerate with `flutterfire configure`.
-- [ ] Firebase Auth providers, RevenueCat, Sentry, and AdMob accounts/keys are not wired
-      yet; defaults are empty or Google test IDs.
+- [x] Android/iOS Firebase apps are registered and platform config files are committed.
+- [x] Firebase Auth providers are enabled for Email/Password and Google.
+- [ ] RevenueCat, Sentry, and AdMob accounts/keys are not wired yet; defaults are empty
+      or Google test IDs.
 
 **Build toolchain (release blockers)**
 
