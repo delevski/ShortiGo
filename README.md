@@ -6,8 +6,8 @@ backend is configured for one **no-cost Firebase Spark** project.
 
 > Status: **v1 MVP — feature-complete, pre-release.** The app builds, analyzes clean,
 > and passes its unit/widget/integration tests. It is **not yet shippable** because it
-> still needs Firebase Auth provider/app registration, release signing, and a working native build
-> toolchain. See [What's left](#whats-left) for the exact gaps.
+> still needs third-party service keys, release signing, iOS toolchain repair, and manual
+> device QA. See [What's left](#whats-left) for the exact gaps.
 
 ---
 
@@ -449,7 +449,8 @@ flutter build appbundle --release --dart-define=ENV=prod ...    # Android (Play)
 flutter build ios --release --dart-define=ENV=prod ...          # iOS (App Store)
 ```
 
-Both currently require toolchain and signing fixes — see below.
+Android release bundling is verified locally; store upload still needs release signing.
+iOS still requires CocoaPods/toolchain repair — see below.
 
 ## What's left
 
@@ -473,8 +474,7 @@ as-is**. Concrete blockers, roughly in priority order:
 **Build toolchain (release blockers)**
 
 - [ ] iOS release build blocked: CocoaPods has a broken Ruby shebang at `/usr/local/bin/pod`.
-- [ ] Android release build blocked: NDK missing `llvm-strip`; Android command-line
-      tools / licenses incomplete.
+- [x] Android release AAB builds successfully with the local SDK/NDK toolchain.
 - [ ] Android release signing not configured — `android/app/build.gradle.kts` still
       uses the **debug** signing config.
 

@@ -10,7 +10,7 @@ Version: 0.1.0+2
 - Flutter unit/widget tests: passed on 2026-06-01.
 - Integration cold-start test: passed on Android emulator on 2026-06-01.
 - iOS release build: blocked locally. `flutter build ios --release --no-codesign` stops because CocoaPods is installed with a broken Ruby shebang at `/usr/local/bin/pod`.
-- Android release AAB: blocked locally. `flutter build appbundle --release` reaches native packaging, then fails because the installed Android NDK does not include `llvm-strip`. `flutter doctor -v` also reports missing Android command-line tools and unknown license status.
+- Android release AAB: passed on 2026-06-02. `flutter build appbundle --release --dart-define=ENV=prod ...` produced `build/app/outputs/bundle/release/app-release.aab` (59.5MB).
 
 ## Cloud Setup
 
@@ -53,7 +53,7 @@ Version: 0.1.0+2
 - Configure Firebase Auth providers in the console. Completed for Email/Password and Google on 2026-06-02.
 - Provision AdMob, RevenueCat, Sentry, and Firebase Performance.
 - Reinstall CocoaPods with the active macOS Ruby, or install via Homebrew/rbenv and rerun `pod --version`.
-- Install Android command-line tools, accept Android licenses, reinstall a complete NDK, and rerun `flutter doctor -v`.
+- Install Android command-line tools, accept Android licenses, reinstall a complete NDK, and rerun `flutter doctor -v`. Completed on 2026-06-02.
 - Replace placeholder `--dart-define` values with production AdMob and RevenueCat keys.
 - Configure Android release signing before uploading to Play Console.
 - Archive the iOS app in Xcode with the production Apple team and upload to App Store Connect.
