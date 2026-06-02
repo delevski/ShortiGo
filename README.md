@@ -381,7 +381,7 @@ flutter run --dart-define=ENV=dev
 
 # Prod with real keys
 flutter run --dart-define=ENV=prod \
-  --dart-define=FIREBASE_PROJECT_ID=shortigo \
+  --dart-define=FIREBASE_PROJECT_ID=shortigo-prod \
   --dart-define=SENTRY_DSN=... \
   --dart-define=ADMOB_APP_ID_IOS=... \
   --dart-define=ADMOB_APP_ID_ANDROID=... \
@@ -395,22 +395,28 @@ See `lib/core/env/env.dart` for the full list of supported defines and their def
 
 ## Backend setup (Firebase)
 
-> Root-level `.firebaserc` and `firestore.indexes.json` are still missing; Functions
-> config lives under `cloud_functions/firebase.json` (see [What's left](#whats-left)).
+Root-level Firebase config is committed for two new projects:
 
-1. Create `shortigo-dev` and `shortigo` Firebase projects.
-2. Add a `.firebaserc` mapping the `dev`/`prod` aliases to those project IDs.
-3. Wire `firestore.rules`, Cloud Functions, and indexes in `firebase.json` (extend
-   `cloud_functions/firebase.json` or add a root config).
-4. Generate real `firebase_options_*.dart` with `flutterfire configure` per flavor.
-5. Deploy rules and apply Storage CORS:
+- `dev` / `default`: `shortigo-dev`
+- `prod`: `shortigo-prod`
+
+1. Create the `shortigo-dev` and `shortigo-prod` Firebase projects, or edit
+   `.firebaserc` if different globally-unique project IDs are required.
+2. Enable Firestore, Storage, Auth, Cloud Functions, and required Google Cloud APIs.
+3. Generate real `firebase_options_*.dart` with `flutterfire configure` per flavor.
+4. Deploy rules and apply Storage CORS:
 
 ```bash
-firebase deploy --only firestore:rules
-gsutil cors set storage-cors.json gs://<your-bucket>
+firebase use dev
+firebase deploy --only firestore:rules,storage
+gsutil cors set storage-cors.json gs://shortigo-dev.appspot.com
+
+firebase use prod
+firebase deploy --only firestore:rules,storage
+gsutil cors set storage-cors.json gs://shortigo-prod.appspot.com
 ```
 
-6. Define the composite indexes listed in the design spec
+5. Define the composite indexes listed in the design spec
    (`docs/superpowers/specs/2026-06-01-shortigo-design.md`, §5) via
    `firestore.indexes.json`.
 
@@ -426,7 +432,7 @@ TypeScript functions live in `cloud_functions/functions/`:
 cd cloud_functions/functions
 npm install
 npm run build
-firebase deploy --only functions
+npm run deploy
 ```
 
 ## Admin tooling
@@ -468,13 +474,18 @@ as-is**. Concrete blockers, roughly in priority order:
 
 **Backend / infrastructure (hard blockers)**
 
-- [ ] No `.firebaserc`, `firebase.json`, or `firestore.indexes.json` committed — no
-      deploys can run, and the composite indexes from the spec are undefined.
-- [ ] No live Firebase project provisioned (`shortigo-dev` not accessible); Firestore
-      rules, Storage CORS, and Functions are all un-deployed.
+- [x] Root `.firebaserc`, `firebase.json`, `firestore.indexes.json`, Firestore rules,
+      Storage rules, and Storage CORS config are committed.
+- [x] Firebase projects `shortigo-dev` and `shortigo-prod` are created.
+- [x] Firestore databases, rules, and indexes are deployed for dev and prod.
+- [x] Identity Toolkit/Auth API is enabled for dev and prod.
+- [ ] Billing is not enabled yet; Storage bucket creation and Cloud Functions deploy
+      are blocked until both projects are upgraded to Blaze.
+- [ ] Firebase Storage buckets are not initialized yet, so Storage rules/CORS are not
+      deployed.
 - [ ] `firebase_options_*.dart` are placeholders — regenerate with `flutterfire configure`.
-- [ ] RevenueCat, Sentry, and AdMob accounts/keys not wired (defaults are empty or
-      Google test IDs).
+- [ ] Firebase Auth providers, RevenueCat, Sentry, and AdMob accounts/keys are not wired
+      yet; defaults are empty or Google test IDs.
 
 **Build toolchain (release blockers)**
 

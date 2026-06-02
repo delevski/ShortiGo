@@ -1,24 +1,29 @@
 # ShortiGo v1 Release Verification
 
-Date: 2026-06-01
-Branch: feat/v1-mvp
+Date: 2026-06-02
+Branch: main
 Version: 0.1.0+2
 
 ## Automated Checks
 
-- Flutter analyze: pending final run after release docs.
-- Flutter unit/widget tests: pending final run after release docs.
-- Integration cold-start test: previously passed with `flutter test integration_test/app_test.dart`.
+- Flutter analyze: passed on 2026-06-01.
+- Flutter unit/widget tests: passed on 2026-06-01.
+- Integration cold-start test: passed on Android emulator on 2026-06-01.
 - iOS release build: blocked locally. `flutter build ios --release --no-codesign` stops because CocoaPods is installed with a broken Ruby shebang at `/usr/local/bin/pod`.
 - Android release AAB: blocked locally. `flutter build appbundle --release` reaches native packaging, then fails because the installed Android NDK does not include `llvm-strip`. `flutter doctor -v` also reports missing Android command-line tools and unknown license status.
 
 ## Cloud Setup
 
+- Firebase projects `shortigo-dev` and `shortigo-prod` were created on 2026-06-02.
+- Root Firebase config is committed at `.firebaserc` and `firebase.json`.
 - Firestore rules file is committed at `firestore.rules`.
-- Firestore rules deploy is blocked because the configured Firebase project `shortigo-dev` is not found or not accessible.
+- Firestore indexes file is committed at `firestore.indexes.json`.
+- Firestore rules and indexes are deployed to `shortigo-dev` and `shortigo-prod`.
 - Storage CORS file is committed at `storage-cors.json`.
-- Storage CORS apply is blocked because buckets `gs://shortigo-dev.appspot.com` and `gs://shortigo.appspot.com` do not exist or are not accessible.
-- Cloud Functions deploy is blocked by the same Firebase/GCP project setup issue.
+- Storage rules file is committed at `storage.rules`.
+- Storage rules and CORS are blocked until billing is enabled and default buckets are created.
+- Cloud Functions deploy is blocked until the projects are upgraded to Blaze; Cloud Build cannot be enabled on the free plan.
+- Identity Toolkit/Auth API is enabled for `shortigo-dev` and `shortigo-prod`; Auth providers still need Firebase Console configuration.
 - Dev seed script exists, but Firestore writes require a real project and credentials.
 
 ## Manual Device Matrix
@@ -39,8 +44,12 @@ Version: 0.1.0+2
 
 ## Required Before Store Submission
 
-- Create or switch `.firebaserc` to real dev/prod Firebase project IDs.
-- Provision Firestore, Storage buckets, Cloud Functions, Auth, AdMob, RevenueCat, Sentry, and Firebase Performance.
+- Create or switch `.firebaserc` to real dev/prod Firebase project IDs. Completed for `shortigo-dev` and `shortigo-prod`.
+- Enable billing on both Firebase projects.
+- Initialize default Storage buckets for both Firebase projects.
+- Enable and deploy Cloud Functions after Blaze upgrade.
+- Configure Firebase Auth providers in the console.
+- Provision AdMob, RevenueCat, Sentry, and Firebase Performance.
 - Reinstall CocoaPods with the active macOS Ruby, or install via Homebrew/rbenv and rerun `pod --version`.
 - Install Android command-line tools, accept Android licenses, reinstall a complete NDK, and rerun `flutter doctor -v`.
 - Replace placeholder `--dart-define` values with production AdMob and RevenueCat keys.
