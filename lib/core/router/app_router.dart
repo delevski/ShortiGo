@@ -7,12 +7,12 @@ import '../../app.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/discover/presentation/discover_page.dart';
 import '../../features/episode_player/presentation/episode_player_page.dart';
+import '../../features/my_list/presentation/my_list_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
 import '../../features/rewards/presentation/rewards_page.dart';
 import '../../features/series_detail/presentation/series_detail_page.dart';
 import '../../features/shorts/presentation/shorts_page.dart';
 import '../../features/subscription/presentation/subscribe_page.dart';
-import '../../shared/widgets/placeholder_page.dart';
 
 GoRouter buildRouter({bool requireAuth = false}) {
   return GoRouter(
@@ -51,7 +51,7 @@ GoRouter buildRouter({bool requireAuth = false}) {
           ),
           GoRoute(
             path: '/my-list',
-            builder: (_, __) => const PlaceholderPage(title: 'My List'),
+            builder: (_, __) => const MyListPage(),
           ),
           GoRoute(
             path: '/profile',

@@ -32,6 +32,9 @@ void main() {
       ProviderScope(
         overrides: [
           seriesRepositoryProvider.overrideWithValue(_FakeSeriesRepository()),
+          currentAppUserDocProvider.overrideWith(
+            (_) => Stream.value(null),
+          ),
         ],
         child: ShortiGoApp(router: buildRouter()),
       ),
@@ -44,6 +47,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Shorts'), findsWidgets);
+
+    await tester.tap(find.text('My List'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('My List'), findsWidgets);
+    expect(find.text('No saved series yet'), findsOneWidget);
 
     await tester.tap(find.text('Profile'));
     await tester.pumpAndSettle();
