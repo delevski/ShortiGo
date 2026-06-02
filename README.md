@@ -1,16 +1,515 @@
-# shortigo
+# ShortiGo
 
-A new Flutter project.
+A TikTok-style **short-drama streaming app** for iOS and Android, built with Flutter.
+Videos play instantly on swipe, content is organized into series, and revenue flows from
+**VIP subscriptions** and **rewarded ads**.
 
-## Getting Started
+> Status: **v1 MVP — feature-complete, pre-release.** The app builds, analyzes clean,
+> and passes its unit/widget/integration tests. It is **not yet shippable** because it
+> still needs a live Firebase project, release signing, and a working native build
+> toolchain. See [What's left](#whats-left) for the exact gaps.
 
-This project is a starting point for a Flutter application.
+---
 
-A few resources to get you started if this is your first Flutter project:
+## Table of contents
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- [System overview](#system-overview)
+- [Features](#features)
+- [Tech stack](#tech-stack)
+- [Architecture](#architecture)
+- [App navigation](#app-navigation)
+- [Key flows](#key-flows)
+- [Project structure](#project-structure)
+- [Data model](#data-model)
+- [Getting started](#getting-started)
+- [Running the app (flavors & config)](#running-the-app-flavors--config)
+- [Backend setup (Firebase)](#backend-setup-firebase)
+- [Cloud Functions](#cloud-functions)
+- [Admin tooling](#admin-tooling)
+- [Testing](#testing)
+- [Build & release](#build--release)
+- [What's left](#whats-left)
+- [Roadmap (v2)](#roadmap-v2)
+- [Documentation](#documentation)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+---
+
+## System overview
+
+How the Flutter client, Firebase backend, and third-party services fit together.
+
+```mermaid
+flowchart TB
+  subgraph Client["Flutter app (iOS / Android)"]
+    UI["Presentation\n(go_router + widgets)"]
+    App["Application\n(Riverpod notifiers)"]
+    Domain["Domain\n(entities + interfaces)"]
+    Data["Data layer\n(repos + gateways)"]
+    UI --> App --> Domain
+    Data --> Domain
+  end
+
+  subgraph Firebase["Google Firebase"]
+    Auth["Firebase Auth"]
+    FS["Cloud Firestore"]
+    Storage["Firebase Storage"]
+    Perf["Firebase Performance"]
+    CF["Cloud Functions"]
+  end
+
+  subgraph External["Third-party"]
+    AdMob["AdMob\n(rewarded ads)"]
+    RC["RevenueCat\n(IAP + webhooks)"]
+    Sentry["Sentry\n(crashes)"]
+  end
+
+  Data --> Auth
+  Data --> FS
+  Data --> Storage
+  Data --> Perf
+  Data --> AdMob
+  Data --> RC
+  Client --> Sentry
+  AdMob -.->|ad completed| CF
+  RC -.->|webhook| CF
+  CF --> FS
+```
+
+---
+
+## Features
+
+- **Discover feed** — category tabs (For You, New, Hot, Adventure, Scary, Anime, VIP)
+  with a series-card grid.
+- **Series detail** — cover, description, and ordered episode list.
+- **Shorts feed** — full-screen vertical `PageView` with a 3-controller pre-cache
+  window so the next video is already buffered before you swipe (target: tap-to-play
+  < 350 ms, zero network requests per swipe).
+- **Episode player** — full-screen playback via `better_player`, with fresh Storage
+  URL minting on open.
+- **Auth** — email/password and Google Sign-In (Firebase Auth). A user document is
+  created on first sign-in.
+- **Rewards** — daily check-in and watch-an-ad-for-bonus, both credited
+  **server-side** through Cloud Functions.
+- **Wallet** — coins (paid) and bonus (earned) balances plus a transaction ledger,
+  shown on the profile page.
+- **VIP subscription** — RevenueCat-backed subscribe flow; locked episodes gate
+  behind a subscribe CTA; VIP status granted server-side via webhook.
+- **Observability** — Sentry crash reporting + route breadcrumbs, Firebase
+  Performance traces on cold start / feed load / playback, memory-pressure handling.
+
+## Tech stack
+
+| Layer        | Choice                                  |
+|--------------|-----------------------------------------|
+| Framework    | Flutter 3.22+ / Dart 3.4+               |
+| State / DI   | Riverpod 2 (codegen)                    |
+| Routing      | go_router                               |
+| Auth         | Firebase Auth + google_sign_in          |
+| Database     | Cloud Firestore                         |
+| Storage      | Firebase Storage (swappable via `VideoSource`) |
+| Local cache  | drift (SQLite)                          |
+| Video        | better_player_plus                      |
+| Ads          | google_mobile_ads (AdMob)               |
+| IAP          | purchases_flutter (RevenueCat)          |
+| Backend      | Cloud Functions (Node/TypeScript)       |
+| Errors       | sentry_flutter                          |
+| Performance  | firebase_performance                    |
+
+## Architecture
+
+Clean-architecture-lite with four layers. Dependencies point inward; the domain layer
+is pure Dart and unit-testable without mocking Firebase.
+
+```mermaid
+flowchart TB
+  subgraph Presentation["Presentation"]
+    Pages["Feature pages\n(discover, shorts, profile…)"]
+    Router["go_router"]
+    Pages --- Router
+  end
+
+  subgraph Application["Application"]
+    Notifiers["Riverpod notifiers\n(auth, discover, shorts, rewards…)"]
+  end
+
+  subgraph Domain["Domain"]
+    Entities["Entities\n(Series, Episode, User, Transaction)"]
+    Ifaces["Interfaces\n(repositories, gateways)"]
+  end
+
+  subgraph Data["Data"]
+    Firestore["Firestore repos"]
+    VideoSrc["VideoSource\n(Firebase Storage)"]
+    Ads["AdMob gateway"]
+    IAP["RevenueCat gateway"]
+    Drift["drift local cache"]
+  end
+
+  Presentation -->|"user actions"| Application
+  Application -->|"reads / writes"| Domain
+  Firestore --> Ifaces
+  VideoSrc --> Ifaces
+  Ads --> Ifaces
+  IAP --> Ifaces
+  Drift --> Ifaces
+  Application --> Entities
+```
+
+Swappable gateways (change one implementation without touching UI):
+
+```mermaid
+flowchart LR
+  Notifier["Notifier"] --> VS["VideoSource"]
+  Notifier --> AG["AdGateway"]
+  Notifier --> IG["IapGateway"]
+  VS --> FB["Firebase Storage\n(v1)"]
+  VS -.-> CDN["CDN / Stream\n(v2)"]
+  AG --> AdMob["AdMob"]
+  IG --> RC["RevenueCat"]
+```
+
+Provider swaps are isolated behind interfaces (`VideoSource`, `IapGateway`,
+`AdGateway`, repositories), so e.g. moving from Firebase Storage to a CDN is a
+single-file change.
+
+## App navigation
+
+Bottom tabs live inside a `ShellRoute`; login and subscribe sit outside the shell.
+
+```mermaid
+flowchart TB
+  Start([App launch]) --> Auth{Logged in?}
+  Auth -->|no| Login["/login"]
+  Auth -->|yes| Shell
+
+  subgraph Shell["Bottom nav shell"]
+    Discover["/discover"]
+    Shorts["/shorts"]
+    Rewards["/rewards"]
+    MyList["/my-list\n(placeholder)"]
+    Profile["/profile"]
+  end
+
+  Discover -->|tap series| Series["/series/:id"]
+  Series -->|watch episode| Player["/player/:seriesId/:episodeId"]
+  Shorts -->|tap series label| Series
+  Profile -->|subscribe| Sub["/subscribe"]
+  Profile -->|sign out| Login
+  Series -->|VIP locked| Sub
+  Player -->|VIP locked| Sub
+  Login -->|success| Discover
+```
+
+## Key flows
+
+### Shorts swipe (pre-cache)
+
+The next video is buffered before the user swipes, so playback feels instant.
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant PageView
+  participant PreCache as VideoPreCacheManager
+  participant Player as BetterPlayer
+
+  User->>PageView: swipe up (episode 3 → 4)
+  PageView->>PreCache: onPageChanged(4)
+  Note over PreCache: window = [3, 4, 5]<br/>4 already buffered
+  PreCache->>Player: play controller 4
+  PreCache->>PreCache: init + buffer controller 5
+  Player-->>User: playback under 100ms
+```
+
+### Watch ad → bonus (server-authoritative)
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant App
+  participant AdMob
+  participant CF as grantAdReward
+  participant FS as Firestore
+
+  User->>App: tap Watch Ad on /rewards
+  App->>AdMob: show rewarded ad
+  AdMob-->>App: onUserEarnedReward
+  App->>CF: callable(adUnitId, …)
+  CF->>CF: rate-limit + validate
+  CF->>FS: append Transaction
+  CF->>FS: increment User.bonus
+  FS-->>App: user doc snapshot
+  App-->>User: wallet updates on /profile
+```
+
+### VIP subscription
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant App
+  participant Store as App Store / Play
+  participant RC as RevenueCat
+  participant CF as grantVipSubscription
+  participant FS as Firestore
+
+  User->>App: tap Subscribe on /profile
+  App->>RC: purchase package
+  RC->>Store: native purchase sheet
+  Store-->>RC: receipt
+  RC->>CF: webhook (signed)
+  CF->>FS: isVip = true, vipExpiresAt
+  FS-->>App: user doc listener
+  App-->>User: VIP content unlocked
+```
+
+## Project structure
+
+```
+lib/
+├── main.dart                 # Bootstrap: Firebase, auth listener, deferred Sentry/IAP init
+├── app.dart                  # MaterialApp.router + bottom-nav shell
+├── bootstrap/                # Firebase init + generated options (dev/prod)
+├── core/                     # Cross-cutting: env, theme, router, error, perf, providers
+├── features/                 # auth, discover, shorts, series_detail, episode_player,
+│                             #   rewards, subscription, profile
+├── domain/                   # entities (freezed) + gateway/repository interfaces
+└── data/                     # firestore, storage, ads, iap, local (drift) implementations
+
+cloud_functions/functions/    # grantAdReward, grantDailyCheckIn, grantVipSubscription (TS)
+tools/                        # seed_firestore.dart, upload_episode.dart (admin scripts)
+test/                         # unit (domain + notifiers) + widget tests
+integration_test/             # full-app cold-start smoke test
+docs/                         # design spec, release checklist, monitoring runbook
+firestore.rules               # Firestore security rules
+storage-cors.json             # Storage CORS for Range requests (better_player seeking)
+```
+
+## Data model
+
+Firestore collections and how they relate:
+
+```mermaid
+erDiagram
+  SERIES ||--o{ EPISODE : contains
+  USER ||--o{ TRANSACTION : has
+  USER ||--o{ FAVORITE : saves
+  USER ||--o{ EVENT : logs
+  CATEGORY ||--o{ SERIES : groups
+  ADMIN_FEATURED }o--o{ SERIES : curates
+
+  SERIES {
+    string id PK
+    string title
+    string coverUrl
+    string category
+    bool isVip
+    bool isPublished
+    int popularity
+  }
+
+  EPISODE {
+    string id PK
+    string seriesId FK
+    int order
+    string videoUrl
+    bool isVipLocked
+  }
+
+  USER {
+    string id PK
+    string email
+    int coins
+    int bonus
+    bool isVip
+    datetime vipExpiresAt
+  }
+
+  TRANSACTION {
+    string id PK
+    string userId FK
+    string type
+    int coinsDelta
+    int bonusDelta
+  }
+
+  ADMIN_FEATURED {
+    string seriesIds
+    datetime updatedAt
+  }
+```
+
+**Wallet trust boundary:** `coins`/`bonus` are server-authoritative. The client never
+writes them — every change goes through a Cloud Function that appends a ledger entry and
+applies a `FieldValue.increment`. The client only subscribes to the user doc and re-renders.
+
+```mermaid
+flowchart LR
+  Client["Flutter client"] -->|"read wallet"| UserDoc["users/{uid}"]
+  Client -->|"trigger only"| CF["Cloud Functions"]
+  CF -->|"write only"| Ledger["transactions"]
+  CF -->|"increment"| UserDoc
+  Client -.->|"never writes coins/bonus"| UserDoc
+```
+
+## Getting started
+
+### Prerequisites
+
+- Flutter `>=3.22.0` with Dart `>=3.4.0`
+- Xcode + CocoaPods (iOS) and Android SDK + NDK (Android)
+- Node.js 18+ (for Cloud Functions)
+- Firebase CLI (`npm i -g firebase-tools`) and the FlutterFire CLI for backend work
+
+### Install
+
+```bash
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs   # freezed / json / riverpod / drift codegen
+```
+
+## Running the app (flavors & config)
+
+Two flavors (`dev`, `prod`) are selected at build time via `--dart-define=ENV=…`.
+All secrets are injected with `--dart-define` (defaults point at AdMob **test** IDs and
+the `shortigo-dev` project).
+
+```bash
+# Dev (defaults are fine for local runs without real keys)
+flutter run --dart-define=ENV=dev
+
+# Prod with real keys
+flutter run --dart-define=ENV=prod \
+  --dart-define=FIREBASE_PROJECT_ID=shortigo \
+  --dart-define=SENTRY_DSN=... \
+  --dart-define=ADMOB_APP_ID_IOS=... \
+  --dart-define=ADMOB_APP_ID_ANDROID=... \
+  --dart-define=ADMOB_REWARDED_IOS=... \
+  --dart-define=ADMOB_REWARDED_ANDROID=... \
+  --dart-define=RC_API_KEY_IOS=... \
+  --dart-define=RC_API_KEY_ANDROID=...
+```
+
+See `lib/core/env/env.dart` for the full list of supported defines and their defaults.
+
+## Backend setup (Firebase)
+
+> Root-level `.firebaserc` and `firestore.indexes.json` are still missing; Functions
+> config lives under `cloud_functions/firebase.json` (see [What's left](#whats-left)).
+
+1. Create `shortigo-dev` and `shortigo` Firebase projects.
+2. Add a `.firebaserc` mapping the `dev`/`prod` aliases to those project IDs.
+3. Wire `firestore.rules`, Cloud Functions, and indexes in `firebase.json` (extend
+   `cloud_functions/firebase.json` or add a root config).
+4. Generate real `firebase_options_*.dart` with `flutterfire configure` per flavor.
+5. Deploy rules and apply Storage CORS:
+
+```bash
+firebase deploy --only firestore:rules
+gsutil cors set storage-cors.json gs://<your-bucket>
+```
+
+6. Define the composite indexes listed in the design spec
+   (`docs/superpowers/specs/2026-06-01-shortigo-design.md`, §5) via
+   `firestore.indexes.json`.
+
+## Cloud Functions
+
+TypeScript functions live in `cloud_functions/functions/`:
+
+- `grantAdReward` — verifies a rewarded-ad event (rate-limited) and credits bonus.
+- `grantDailyCheckIn` — enforces the once-per-day window and credits bonus.
+- `grantVipSubscription` — RevenueCat webhook that flips `isVip` / `vipExpiresAt`.
+
+```bash
+cd cloud_functions/functions
+npm install
+npm run build
+firebase deploy --only functions
+```
+
+## Admin tooling
+
+- `tools/seed_firestore.dart` — seed demo series/episodes into a project.
+- `tools/upload_episode.dart` — upload an episode video + thumbnail and set
+  `Cache-Control` headers.
+
+```bash
+# Requires gcloud auth; reads FIREBASE_PROJECT_ID / FIREBASE_STORAGE_BUCKET from env
+dart run tools/upload_episode.dart <seriesId> <order> <video.mp4> <thumb.jpg> [isVip]
+```
+
+## Testing
+
+```bash
+flutter analyze                                  # static analysis (currently: no issues)
+flutter test                                     # unit + widget tests (currently: all pass)
+flutter test integration_test/app_test.dart     # cold-start integration smoke (needs a device)
+```
+
+Current coverage: domain entities (JSON round-trips, defaults), the discover notifier,
+and core widgets (series card, error view, bottom-nav navigation). Wallet/rewards/IAP
+notifiers and Cloud Functions are **not yet** unit-tested.
+
+## Build & release
+
+```bash
+flutter build appbundle --release --dart-define=ENV=prod ...    # Android (Play)
+flutter build ios --release --dart-define=ENV=prod ...          # iOS (App Store)
+```
+
+Both currently require toolchain and signing fixes — see below.
+
+## What's left
+
+The code is feature-complete against the v1 spec, but the project **cannot be released
+as-is**. Concrete blockers, roughly in priority order:
+
+**Backend / infrastructure (hard blockers)**
+
+- [ ] No `.firebaserc`, `firebase.json`, or `firestore.indexes.json` committed — no
+      deploys can run, and the composite indexes from the spec are undefined.
+- [ ] No live Firebase project provisioned (`shortigo-dev` not accessible); Firestore
+      rules, Storage CORS, and Functions are all un-deployed.
+- [ ] `firebase_options_*.dart` are placeholders — regenerate with `flutterfire configure`.
+- [ ] RevenueCat, Sentry, and AdMob accounts/keys not wired (defaults are empty or
+      Google test IDs).
+
+**Build toolchain (release blockers)**
+
+- [ ] iOS release build blocked: CocoaPods has a broken Ruby shebang at `/usr/local/bin/pod`.
+- [ ] Android release build blocked: NDK missing `llvm-strip`; Android command-line
+      tools / licenses incomplete.
+- [ ] Android release signing not configured — `android/app/build.gradle.kts` still
+      uses the **debug** signing config.
+
+**Product gaps**
+
+- [ ] `/my-list` bottom-nav tab renders a `PlaceholderPage` — the favorites/collection
+      UI is not built (the Firestore `favorites` collection and rules already exist).
+- [ ] No unauthenticated onboarding/category-preview: the app redirects straight to
+      `/login`, whereas the spec called for a preview-before-signup screen.
+- [ ] Cloud Functions exist but are untested against live AdMob/RevenueCat events
+      (e.g. webhook HMAC signature verification needs end-to-end validation).
+
+**QA**
+
+- [ ] The manual device matrix in `docs/release-checklist-v1.md` is entirely unchecked
+      (cold-start timing, 50-swipe jank test, sign-in flows, ad reward, daily check-in,
+      VIP grant, airplane-mode error states, crash-free rate ≥ 99.5%).
+
+See `docs/release-checklist-v1.md` for the full pre-submission list.
+
+## Roadmap (v2)
+
+Explicitly out of scope for v1: offline downloads, watch history, i18n, push
+notifications, casting, a real recommendation algorithm, social features
+(likes/comments/shares), and web/desktop/tablet layouts.
+
+## Documentation
+
+- `docs/superpowers/specs/2026-06-01-shortigo-design.md` — full approved design spec
+  (architecture, data model, flows, performance budgets, security).
+- `docs/release-checklist-v1.md` — release verification results and pre-submission tasks.
+- `docs/monitoring-runbook-v1.md` — launch-week monitoring runbook (Sentry, Perf, revenue).
