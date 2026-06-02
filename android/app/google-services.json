@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "8786663267",
+    "project_id": "shortigo-prod",
+    "storage_bucket": "shortigo-prod.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:8786663267:android:e2229849606db566d2a556",
+        "android_client_info": {
+          "package_name": "com.shortigo.shortigo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "8786663267-423p7s8000h4mpg533b82jh8f1ttmeb5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.shortigo.shortigo",
+            "certificate_hash": "562bf0b5dbb66ff0416b55402f8ca35cf01c7c6c"
+          }
+        },
+        {
+          "client_id": "8786663267-vnbeaqksstluv11l9j0o7aev58jt84cd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDSMHqRfRAcQ9cyS9aylLMMbrnbDSspf6c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "8786663267-vnbeaqksstluv11l9j0o7aev58jt84cd.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "8786663267-t0jib4tjk2vn8juu2jmiuc5s2u4bmldn.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.shortigo.shortigo"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

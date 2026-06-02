@@ -24,8 +24,6 @@ coverage/
 *.lcov
 
 # Secrets
-**/google-services.json
-**/GoogleService-Info.plist
 **/.env
 **/.env.*
 **/secrets.dart
