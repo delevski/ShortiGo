@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/category.dart';
 import '../../domain/entities/series.dart';
 import '../../domain/interfaces/series_repository.dart';
+import 'firestore_json.dart';
 
 class FirestoreSeriesRepository implements SeriesRepository {
   FirestoreSeriesRepository(this._db, {required this.featuredDocId});
@@ -18,11 +19,18 @@ class FirestoreSeriesRepository implements SeriesRepository {
     final snap = await _db.collection('admin').doc(featuredDocId).get();
     final data = snap.data();
     if (data == null) return [];
-    final ids = List<String>.from((data['seriesIds'] ?? const <String>[]) as Iterable);
+    final ids =
+        List<String>.from((data['seriesIds'] ?? const <String>[]) as Iterable);
     if (ids.isEmpty) return [];
-    final docs = await _db.collection('series').where(FieldPath.documentId, whereIn: ids).get();
+    final docs = await _db
+        .collection('series')
+        .where(FieldPath.documentId, whereIn: ids)
+        .get();
     final byId = {for (final d in docs.docs) d.id: d};
-    final ordered = [for (final id in ids) if (byId[id] != null) byId[id]!];
+    final ordered = [
+      for (final id in ids)
+        if (byId[id] != null) byId[id]!,
+    ];
     return ordered
         .take(limit)
         .map((d) => _toSeries(d))
@@ -55,6 +63,8 @@ class FirestoreSeriesRepository implements SeriesRepository {
   }
 
   Series _toSeries(DocumentSnapshot<Map<String, dynamic>> d) {
-    return Series.fromJson({...d.data()!, 'id': d.id});
+    final data = firestoreJson(d.data()!, id: d.id);
+    data['category'] = Category.fromId(data['category'] as String).name;
+    return Series.fromJson(data);
   }
 }

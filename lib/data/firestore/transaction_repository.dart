@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart' hide Transaction;
 
 import '../../domain/entities/transaction.dart';
 import '../../domain/interfaces/transaction_repository.dart';
+import 'firestore_json.dart';
 
 class FirestoreTransactionRepository implements TransactionRepository {
   FirestoreTransactionRepository(this._db);
@@ -19,7 +20,11 @@ class FirestoreTransactionRepository implements TransactionRepository {
         .snapshots()
         .map(
           (snap) => snap.docs
-              .map((doc) => Transaction.fromJson({...doc.data(), 'id': doc.id}))
+              .map(
+                (doc) => Transaction.fromJson(
+                  firestoreJson(doc.data(), id: doc.id),
+                ),
+              )
               .toList(),
         );
   }

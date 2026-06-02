@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/episode.dart';
 import '../../domain/interfaces/episode_repository.dart';
+import 'firestore_json.dart';
 
 class FirestoreEpisodeRepository implements EpisodeRepository {
   FirestoreEpisodeRepository(this._db);
@@ -13,12 +14,14 @@ class FirestoreEpisodeRepository implements EpisodeRepository {
         .where('seriesId', isEqualTo: seriesId)
         .orderBy('order')
         .get();
-    return snap.docs.map((d) => Episode.fromJson({...d.data(), 'id': d.id})).toList();
+    return snap.docs
+        .map((d) => Episode.fromJson(firestoreJson(d.data(), id: d.id)))
+        .toList();
   }
 
   @override
   Future<Episode> byId(String id) async {
     final d = await _db.collection('episodes').doc(id).get();
-    return Episode.fromJson({...d.data()!, 'id': d.id});
+    return Episode.fromJson(firestoreJson(d.data()!, id: d.id));
   }
 }

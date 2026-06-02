@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/transaction.dart' as domain;
 import '../../domain/entities/user.dart';
 import '../../domain/interfaces/user_repository.dart';
+import 'firestore_json.dart';
 
 class FirestoreUserRepository implements UserRepository {
   FirestoreUserRepository(this._db);
@@ -16,7 +17,7 @@ class FirestoreUserRepository implements UserRepository {
       throw StateError('User $id not found');
     }
 
-    return AppUser.fromJson({...doc.data()!, 'id': doc.id});
+    return AppUser.fromJson(firestoreJson(doc.data()!, id: doc.id));
   }
 
   @override
@@ -26,7 +27,7 @@ class FirestoreUserRepository implements UserRepository {
         throw StateError('User $id not found');
       }
 
-      return AppUser.fromJson({...doc.data()!, 'id': doc.id});
+      return AppUser.fromJson(firestoreJson(doc.data()!, id: doc.id));
     });
   }
 
