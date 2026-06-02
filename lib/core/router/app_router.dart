@@ -8,27 +8,33 @@ import '../../features/auth/presentation/login_page.dart';
 import '../../features/discover/presentation/discover_page.dart';
 import '../../features/episode_player/presentation/episode_player_page.dart';
 import '../../features/my_list/presentation/my_list_page.dart';
+import '../../features/onboarding/presentation/onboarding_page.dart';
 import '../../features/profile/presentation/profile_page.dart';
 import '../../features/rewards/presentation/rewards_page.dart';
 import '../../features/series_detail/presentation/series_detail_page.dart';
 import '../../features/shorts/presentation/shorts_page.dart';
 import '../../features/subscription/presentation/subscribe_page.dart';
 
-GoRouter buildRouter({bool requireAuth = false}) {
+GoRouter buildRouter({
+  bool requireAuth = false,
+  bool Function()? isLoggedIn,
+}) {
   return GoRouter(
-    initialLocation: '/discover',
+    initialLocation: requireAuth ? '/onboarding' : '/discover',
     observers: [_SentryRouteObserver()],
     redirect: (context, state) {
       if (!requireAuth) {
         return null;
       }
 
-      final loggedIn = fb.FirebaseAuth.instance.currentUser != null;
+      final loggedIn =
+          isLoggedIn?.call() ?? fb.FirebaseAuth.instance.currentUser != null;
       final goingToLogin = state.matchedLocation == '/login';
-      if (!loggedIn && !goingToLogin) {
-        return '/login';
+      final goingToOnboarding = state.matchedLocation == '/onboarding';
+      if (!loggedIn && !goingToLogin && !goingToOnboarding) {
+        return '/onboarding';
       }
-      if (loggedIn && goingToLogin) {
+      if (loggedIn && (goingToLogin || goingToOnboarding)) {
         return '/discover';
       }
       return null;
@@ -71,6 +77,10 @@ GoRouter buildRouter({bool requireAuth = false}) {
             ),
           ),
         ],
+      ),
+      GoRoute(
+        path: '/onboarding',
+        builder: (_, __) => const OnboardingPage(),
       ),
       GoRoute(
         path: '/login',

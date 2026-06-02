@@ -175,7 +175,7 @@ Bottom tabs live inside a `ShellRoute`; login and subscribe sit outside the shel
 ```mermaid
 flowchart TB
   Start([App launch]) --> Auth{Logged in?}
-  Auth -->|no| Login["/login"]
+  Auth -->|no| Onboarding["/onboarding"]
   Auth -->|yes| Shell
 
   subgraph Shell["Bottom nav shell"]
@@ -191,6 +191,7 @@ flowchart TB
   Shorts -->|tap series label| Series
   Profile -->|subscribe| Sub["/subscribe"]
   Profile -->|sign out| Login
+  Onboarding -->|sign in| Login
   Series -->|VIP locked| Sub
   Player -->|VIP locked| Sub
   Login -->|success| Discover
@@ -480,8 +481,7 @@ as-is**. Concrete blockers, roughly in priority order:
 **Product gaps**
 
 - [x] `/my-list` bottom-nav tab renders the saved-series screen.
-- [ ] No unauthenticated onboarding/category-preview: the app redirects straight to
-      `/login`, whereas the spec called for a preview-before-signup screen.
+- [x] Logged-out users land on `/onboarding` with category previews before sign-in.
 - [ ] Rewards/VIP are Spark-mode demo flows. Production-grade server validation requires
       a future paid backend or another no-cost backend provider.
 
