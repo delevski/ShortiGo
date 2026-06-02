@@ -182,7 +182,7 @@ flowchart TB
     Discover["/discover"]
     Shorts["/shorts"]
     Rewards["/rewards"]
-    MyList["/my-list\n(placeholder)"]
+    MyList["/my-list\nsaved series"]
     Profile["/profile"]
   end
 
@@ -479,8 +479,7 @@ as-is**. Concrete blockers, roughly in priority order:
 
 **Product gaps**
 
-- [ ] `/my-list` bottom-nav tab renders a `PlaceholderPage` — the favorites/collection
-      UI is not built (the Firestore `favorites` collection and rules already exist).
+- [x] `/my-list` bottom-nav tab renders the saved-series screen.
 - [ ] No unauthenticated onboarding/category-preview: the app redirects straight to
       `/login`, whereas the spec called for a preview-before-signup screen.
 - [ ] Rewards/VIP are Spark-mode demo flows. Production-grade server validation requires
