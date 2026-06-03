@@ -1,80 +1,48 @@
-import 'package:better_player_plus/better_player_plus.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/entities/episode.dart';
 
-class VideoCard extends StatefulWidget {
+/// Metadata overlay for a Shorts page. Video playback is handled by [ShortsPage].
+class VideoCard extends StatelessWidget {
   const VideoCard({
     super.key,
     required this.episode,
-    required this.controller,
     required this.isActive,
+    required this.isLoading,
+    required this.hasError,
+    required this.onRetry,
     required this.onTapSeries,
   });
 
   final Episode episode;
-  final BetterPlayerController? controller;
   final bool isActive;
+  final bool isLoading;
+  final bool hasError;
+  final VoidCallback onRetry;
   final VoidCallback onTapSeries;
 
   @override
-  State<VideoCard> createState() => _VideoCardState();
-}
-
-class _VideoCardState extends State<VideoCard> {
-  bool _hasError = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _attachController(widget.controller);
-    if (widget.isActive) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        widget.controller?.play();
-      });
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant VideoCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.controller != widget.controller) {
-      _detachController(oldWidget.controller);
-      _attachController(widget.controller);
-      _hasError = false;
-    }
-
-    if (widget.isActive && widget.controller != null) {
-      widget.controller!.play();
-    } else if (!widget.isActive && widget.controller != null) {
-      widget.controller!.pause();
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final controller = widget.controller;
-
-    return Container(
-      color: Colors.black,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (_hasError)
-            Center(
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (isActive && hasError)
+          ColoredBox(
+            color: Colors.black,
+            child: Center(
               child: FilledButton(
-                onPressed: () => setState(() => _hasError = false),
+                onPressed: onRetry,
                 child: const Text('Tap to retry'),
               ),
-            )
-          else if (controller != null)
-            Positioned.fill(
-              child: BetterPlayer(controller: controller),
-            )
-          else
-            const Center(child: CircularProgressIndicator()),
-          Positioned(
+            ),
+          )
+        else if (isActive && isLoading)
+          const ColoredBox(
+            color: Colors.black,
+            child: Center(child: CircularProgressIndicator()),
+          ),
+        Positioned(
             left: 16,
             right: 80,
             bottom: 24,
@@ -83,7 +51,7 @@ class _VideoCardState extends State<VideoCard> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'EP.${widget.episode.order}',
+                  'EP.${episode.order}',
                   style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 12,
@@ -91,7 +59,7 @@ class _VideoCardState extends State<VideoCard> {
                 ),
                 const SizedBox(height: 4),
                 GestureDetector(
-                  onTap: widget.onTapSeries,
+                  onTap: onTapSeries,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -110,29 +78,7 @@ class _VideoCardState extends State<VideoCard> {
               ],
             ),
           ),
-        ],
-      ),
+      ],
     );
-  }
-
-  @override
-  void dispose() {
-    _detachController(widget.controller);
-    super.dispose();
-  }
-
-  void _attachController(BetterPlayerController? controller) {
-    controller?.addEventsListener(_onPlayerEvent);
-  }
-
-  void _detachController(BetterPlayerController? controller) {
-    controller?.removeEventsListener(_onPlayerEvent);
-  }
-
-  void _onPlayerEvent(BetterPlayerEvent event) {
-    if (event.betterPlayerEventType == BetterPlayerEventType.exception &&
-        mounted) {
-      setState(() => _hasError = true);
-    }
   }
 }

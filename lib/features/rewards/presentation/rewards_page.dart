@@ -142,6 +142,10 @@ class _DailyCheckIn extends ConsumerWidget {
         title: const Text('Daily check-in'),
         subtitle: const Text('+5 bonus'),
         trailing: FilledButton(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(72, 40),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
           onPressed: () {
             ref.read(rewardsNotifierProvider.notifier).claimDailyCheckIn();
           },
@@ -174,7 +178,14 @@ class _WatchAd extends StatelessWidget {
                 height: 24,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : FilledButton(onPressed: onTap, child: const Text('Watch')),
+            : FilledButton(
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(72, 40),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                onPressed: onTap,
+                child: const Text('Watch'),
+              ),
       ),
     );
   }
