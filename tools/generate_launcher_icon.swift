@@ -19,6 +19,14 @@ let androidTargets = [
     IconTarget(path: "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png", size: 192),
 ]
 
+let androidAdaptiveTargets = [
+    IconTarget(path: "android/app/src/main/res/drawable-mdpi/ic_launcher_foreground.png", size: 108),
+    IconTarget(path: "android/app/src/main/res/drawable-hdpi/ic_launcher_foreground.png", size: 162),
+    IconTarget(path: "android/app/src/main/res/drawable-xhdpi/ic_launcher_foreground.png", size: 216),
+    IconTarget(path: "android/app/src/main/res/drawable-xxhdpi/ic_launcher_foreground.png", size: 324),
+    IconTarget(path: "android/app/src/main/res/drawable-xxxhdpi/ic_launcher_foreground.png", size: 432),
+]
+
 let iosTargets = [
     IconTarget(path: "ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@1x.png", size: 20),
     IconTarget(path: "ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@2x.png", size: 40),
@@ -41,7 +49,14 @@ let projectTargets = [
     IconTarget(path: "assets/branding/shortigo_launcher_icon_1024.png", size: 1024),
 ]
 
-func drawIcon(size: Int) -> CGImage {
+let splashTargets = [
+    IconTarget(path: "android/app/src/main/res/drawable-nodpi/launch_logo.png", size: 320),
+    IconTarget(path: "ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage.png", size: 120),
+    IconTarget(path: "ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@2x.png", size: 240),
+    IconTarget(path: "ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@3x.png", size: 360),
+]
+
+func makeContext(size: Int, transparent: Bool = false) -> CGContext {
     let colorSpace = CGColorSpaceCreateDeviceRGB()
     guard let context = CGContext(
         data: nil,
@@ -61,14 +76,19 @@ func drawIcon(size: Int) -> CGImage {
     context.setAllowsAntialiasing(true)
     context.interpolationQuality = .high
 
-    context.setFillColor(CGColor(red: 0.043, green: 0.024, blue: 0.075, alpha: 1))
-    context.fill(CGRect(x: 0, y: 0, width: 1024, height: 1024))
+    if transparent {
+        context.clear(CGRect(x: 0, y: 0, width: 1024, height: 1024))
+    }
 
-    let tileRect = CGRect(x: 96, y: 96, width: 832, height: 832)
+    return context
+}
+
+func drawGradientTile(in context: CGContext, tileRect: CGRect) {
+    let colorSpace = CGColorSpaceCreateDeviceRGB()
     let tilePath = CGPath(
         roundedRect: tileRect,
-        cornerWidth: 220,
-        cornerHeight: 220,
+        cornerWidth: tileRect.width * 0.25,
+        cornerHeight: tileRect.height * 0.25,
         transform: nil
     )
     context.saveGState()
@@ -95,9 +115,16 @@ func drawIcon(size: Int) -> CGImage {
 
     context.setStrokeColor(CGColor(red: 1, green: 1, blue: 1, alpha: 0.16))
     context.setLineWidth(18)
-    context.addPath(CGPath(roundedRect: CGRect(x: 128, y: 128, width: 768, height: 768), cornerWidth: 188, cornerHeight: 188, transform: nil))
+    context.addPath(CGPath(
+        roundedRect: tileRect.insetBy(dx: 32, dy: 32),
+        cornerWidth: max(1, tileRect.width * 0.22),
+        cornerHeight: max(1, tileRect.height * 0.22),
+        transform: nil
+    ))
     context.strokePath()
+}
 
+func drawPlayMark(in context: CGContext) {
     let playPath = CGMutablePath()
     playPath.move(to: CGPoint(x: 405, y: 317))
     playPath.addCurve(to: CGPoint(x: 463, y: 285), control1: CGPoint(x: 405, y: 287), control2: CGPoint(x: 438, y: 269))
@@ -117,9 +144,42 @@ func drawIcon(size: Int) -> CGImage {
     context.fillEllipse(in: CGRect(x: 656, y: 680, width: 136, height: 136))
     context.setFillColor(CGColor(red: 1, green: 0.96, blue: 0.78, alpha: 1))
     context.fillEllipse(in: CGRect(x: 690, y: 714, width: 68, height: 68))
+}
+
+func drawIcon(size: Int) -> CGImage {
+    let context = makeContext(size: size)
+
+    context.setFillColor(CGColor(red: 0.545, green: 0.361, blue: 0.965, alpha: 1))
+    context.fill(CGRect(x: 0, y: 0, width: 1024, height: 1024))
+    drawGradientTile(in: context, tileRect: CGRect(x: 0, y: 0, width: 1024, height: 1024))
+    drawPlayMark(in: context)
 
     guard let image = context.makeImage() else {
         fatalError("Could not create icon image")
+    }
+    return image
+}
+
+func drawAdaptiveForeground(size: Int) -> CGImage {
+    let context = makeContext(size: size, transparent: true)
+
+    drawGradientTile(in: context, tileRect: CGRect(x: 112, y: 112, width: 800, height: 800))
+    drawPlayMark(in: context)
+
+    guard let image = context.makeImage() else {
+        fatalError("Could not create adaptive foreground image")
+    }
+    return image
+}
+
+func drawSplashLogo(size: Int) -> CGImage {
+    let context = makeContext(size: size, transparent: true)
+
+    drawGradientTile(in: context, tileRect: CGRect(x: 96, y: 96, width: 832, height: 832))
+    drawPlayMark(in: context)
+
+    guard let image = context.makeImage() else {
+        fatalError("Could not create splash logo image")
     }
     return image
 }
@@ -137,6 +197,18 @@ func writePNG(_ image: CGImage, to url: URL) {
 
 for target in projectTargets + androidTargets + iosTargets {
     let image = drawIcon(size: target.size)
+    writePNG(image, to: root.appendingPathComponent(target.path))
+    print("Wrote \(target.path) (\(target.size)x\(target.size))")
+}
+
+for target in androidAdaptiveTargets {
+    let image = drawAdaptiveForeground(size: target.size)
+    writePNG(image, to: root.appendingPathComponent(target.path))
+    print("Wrote \(target.path) (\(target.size)x\(target.size))")
+}
+
+for target in splashTargets {
+    let image = drawSplashLogo(size: target.size)
     writePNG(image, to: root.appendingPathComponent(target.path))
     print("Wrote \(target.path) (\(target.size)x\(target.size))")
 }
