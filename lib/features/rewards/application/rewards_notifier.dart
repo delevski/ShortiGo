@@ -9,11 +9,13 @@ import '../../../domain/entities/user.dart';
 class RewardsState {
   const RewardsState({
     this.user,
+    this.requiresSignIn = false,
     this.isWatchingAd = false,
     this.error,
   });
 
   final AppUser? user;
+  final bool requiresSignIn;
   final bool isWatchingAd;
   final String? error;
 }
@@ -29,7 +31,7 @@ class RewardsNotifier extends AsyncNotifier<RewardsState> {
   Future<RewardsState> build() async {
     final auth = ref.watch(currentAuthUserProvider).value;
     if (auth == null) {
-      return const RewardsState();
+      return const RewardsState(requiresSignIn: true);
     }
 
     final userRepo = ref.read(userRepositoryProvider);

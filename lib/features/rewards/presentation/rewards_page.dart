@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/error/friendly_error.dart';
 import '../../../core/theme/app_colors.dart';
@@ -23,6 +24,10 @@ class RewardsPage extends ConsumerWidget {
           onRetry: () => ref.invalidate(rewardsNotifierProvider),
         ),
         data: (state) {
+          if (state.requiresSignIn) {
+            return const _SignInRewards();
+          }
+
           final user = state.user;
 
           return ListView(
@@ -48,6 +53,44 @@ class RewardsPage extends ConsumerWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _SignInRewards extends StatelessWidget {
+  const _SignInRewards();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.card_giftcard_outlined, size: 44),
+            const SizedBox(height: 12),
+            const Text(
+              'Sign in to earn bonus',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Daily check-ins and ad rewards are saved to your wallet.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () => context.push('/login'),
+              child: const Text('Sign in'),
+            ),
+          ],
+        ),
       ),
     );
   }

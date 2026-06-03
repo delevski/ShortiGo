@@ -6,16 +6,22 @@ import '../../../domain/entities/series.dart';
 class MyListState {
   const MyListState({
     this.series = const [],
+    this.requiresSignIn = false,
   });
 
   final List<Series> series;
+  final bool requiresSignIn;
 }
 
 class MyListNotifier extends AsyncNotifier<MyListState> {
   @override
   Future<MyListState> build() async {
     final user = await ref.watch(currentAppUserDocProvider.future);
-    final favoriteSeriesIds = user?.favoriteSeriesIds ?? const <String>[];
+    if (user == null) {
+      return const MyListState(requiresSignIn: true);
+    }
+
+    final favoriteSeriesIds = user.favoriteSeriesIds;
     if (favoriteSeriesIds.isEmpty) {
       return const MyListState();
     }

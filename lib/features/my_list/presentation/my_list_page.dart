@@ -24,6 +24,10 @@ class MyListPage extends ConsumerWidget {
           onRetry: () => ref.invalidate(myListNotifierProvider),
         ),
         data: (state) {
+          if (state.requiresSignIn) {
+            return const _SignInMyList();
+          }
+
           if (state.series.isEmpty) {
             return const _EmptyMyList();
           }
@@ -46,6 +50,44 @@ class MyListPage extends ConsumerWidget {
             },
           );
         },
+      ),
+    );
+  }
+}
+
+class _SignInMyList extends StatelessWidget {
+  const _SignInMyList();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.bookmark_add_outlined, size: 44),
+            const SizedBox(height: 12),
+            const Text(
+              'Sign in to save series',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Your saved series will stay synced on this device.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: () => context.push('/login'),
+              child: const Text('Sign in'),
+            ),
+          ],
+        ),
       ),
     );
   }

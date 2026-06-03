@@ -52,7 +52,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('My List'), findsWidgets);
-    expect(find.text('No saved series yet'), findsOneWidget);
+    expect(find.text('Sign in to save series'), findsOneWidget);
 
     await tester.tap(find.text('Profile'));
     await tester.pumpAndSettle();

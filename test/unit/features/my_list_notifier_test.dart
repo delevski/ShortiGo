@@ -48,13 +48,15 @@ void main() {
     repo = _MockSeriesRepository();
   });
 
-  test('returns an empty list when there is no signed-in app user', () async {
+  test('marks the screen as requiring sign-in when there is no app user',
+      () async {
     final container = _container(repo: repo, user: const AsyncData(null));
     addTearDown(container.dispose);
 
     final state = await container.read(myListNotifierProvider.future);
 
     expect(state.series, isEmpty);
+    expect(state.requiresSignIn, isTrue);
     verifyNever(() => repo.byId(any()));
   });
 
@@ -65,6 +67,7 @@ void main() {
     final state = await container.read(myListNotifierProvider.future);
 
     expect(state.series, isEmpty);
+    expect(state.requiresSignIn, isFalse);
     verifyNever(() => repo.byId(any()));
   });
 
