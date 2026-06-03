@@ -52,6 +52,28 @@ void main() {
       expect(user.lastDailyCheckIn, DateTime.utc(2026, 6, 3));
     });
 
+    test('user can save and unsave favorite series IDs', () async {
+      final db = FakeFirebaseFirestore();
+      await db.collection('users').doc('u1').set({
+        'email': 'u@example.com',
+        'createdAt': Timestamp.fromDate(DateTime.utc(2026, 6, 2)),
+        'favoriteSeriesIds': ['existing'],
+      });
+
+      final repo = FirestoreUserRepository(db);
+
+      await repo.saveSeries(userId: 'u1', seriesId: 's1');
+      await repo.saveSeries(userId: 'u1', seriesId: 's1');
+
+      final saved = await repo.byId('u1');
+      expect(saved.favoriteSeriesIds, ['existing', 's1']);
+
+      await repo.unsaveSeries(userId: 'u1', seriesId: 's1');
+
+      final unsaved = await repo.byId('u1');
+      expect(unsaved.favoriteSeriesIds, ['existing']);
+    });
+
     test('transactions map server timestamp ledger entries', () async {
       final db = FakeFirebaseFirestore();
       await db

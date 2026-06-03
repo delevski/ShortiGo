@@ -489,7 +489,8 @@ as-is**. Concrete blockers, roughly in priority order:
 
 **Product gaps**
 
-- [x] `/my-list` bottom-nav tab renders the saved-series screen.
+- [x] `/my-list` bottom-nav tab renders saved series, and series detail supports
+      Save/Unsave.
 - [x] Logged-out users land on `/onboarding` with category previews before sign-in.
 - [ ] Rewards/VIP are Spark-mode demo flows. Production-grade server validation requires
       a future paid backend or another no-cost backend provider.

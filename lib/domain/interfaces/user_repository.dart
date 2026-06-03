@@ -6,6 +6,8 @@ abstract class UserRepository {
   Stream<AppUser> watch(String id);
   Future<void> createIfMissing(AppUser user);
   Future<void> setDailyCheckIn(String userId, DateTime at);
+  Future<void> saveSeries({required String userId, required String seriesId});
+  Future<void> unsaveSeries({required String userId, required String seriesId});
   Future<void> grantDemoBonus({
     required String userId,
     required TxType type,

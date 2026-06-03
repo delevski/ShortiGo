@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/providers.dart';
 import '../../../core/error/friendly_error.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../domain/entities/user.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../application/series_detail_notifier.dart';
@@ -83,6 +87,8 @@ class SeriesDetailPage extends ConsumerWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(series.description),
+                        const SizedBox(height: 16),
+                        _SaveSeriesButton(seriesId: series.id),
                       ],
                     ),
                   ),
@@ -125,5 +131,42 @@ class SeriesDetailPage extends ConsumerWidget {
         },
       ),
     );
+  }
+}
+
+class _SaveSeriesButton extends ConsumerWidget {
+  const _SaveSeriesButton({required this.seriesId});
+
+  final String seriesId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentAppUserDocProvider).value;
+    final isSaved = user?.favoriteSeriesIds.contains(seriesId) ?? false;
+
+    return FilledButton.icon(
+      onPressed: () => _toggleSaved(context, ref, user, isSaved),
+      icon: Icon(isSaved ? Icons.bookmark : Icons.bookmark_outline),
+      label: Text(isSaved ? 'Saved' : 'Save'),
+    );
+  }
+
+  Future<void> _toggleSaved(
+    BuildContext context,
+    WidgetRef ref,
+    AppUser? user,
+    bool isSaved,
+  ) async {
+    if (user == null) {
+      unawaited(context.push('/login'));
+      return;
+    }
+
+    final repo = ref.read(userRepositoryProvider);
+    if (isSaved) {
+      await repo.unsaveSeries(userId: user.id, seriesId: seriesId);
+    } else {
+      await repo.saveSeries(userId: user.id, seriesId: seriesId);
+    }
   }
 }

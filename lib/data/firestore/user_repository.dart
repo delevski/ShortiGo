@@ -45,6 +45,26 @@ class FirestoreUserRepository implements UserRepository {
   }
 
   @override
+  Future<void> saveSeries({
+    required String userId,
+    required String seriesId,
+  }) async {
+    await _db.collection('users').doc(userId).update({
+      'favoriteSeriesIds': FieldValue.arrayUnion([seriesId]),
+    });
+  }
+
+  @override
+  Future<void> unsaveSeries({
+    required String userId,
+    required String seriesId,
+  }) async {
+    await _db.collection('users').doc(userId).update({
+      'favoriteSeriesIds': FieldValue.arrayRemove([seriesId]),
+    });
+  }
+
+  @override
   Future<void> grantDemoBonus({
     required String userId,
     required domain.TxType type,
