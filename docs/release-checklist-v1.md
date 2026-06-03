@@ -60,8 +60,11 @@ Version: 0.1.0+2
 - Delete the unused `shortigo-dev` Firebase project. Completed on 2026-06-02.
 - Configure Firebase Auth providers in the console. Completed for Email/Password and Google on 2026-06-02.
 - Provision AdMob, RevenueCat, Sentry, and Firebase Performance.
+- Confirm a prod startup log has no `ShortiGo release blockers` entries.
 - Keep the Homebrew Ruby/CocoaPods environment available for iOS builds, or install an equivalent Ruby/CocoaPods toolchain and rerun `pod --version`.
 - Install Android command-line tools, accept Android licenses, reinstall a complete NDK, and rerun `flutter doctor -v`. Completed on 2026-06-02.
-- Replace placeholder `--dart-define` values with production AdMob and RevenueCat keys.
+- Replace placeholder `--dart-define` values with production `SENTRY_DSN`,
+  `ADMOB_APP_ID_IOS`, `ADMOB_APP_ID_ANDROID`, `ADMOB_REWARDED_IOS`,
+  `ADMOB_REWARDED_ANDROID`, `RC_API_KEY_IOS`, and `RC_API_KEY_ANDROID`.
 - Configure Android release signing before uploading to Play Console. Local upload signing is configured; back up `android/app/upload-keystore.jks` and `android/key.properties` before store submission.
 - Archive the iOS app in Xcode with the production Apple team and upload to App Store Connect.

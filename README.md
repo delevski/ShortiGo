@@ -454,13 +454,28 @@ notifiers and optional Cloud Functions are **not yet** unit-tested.
 ## Build & release
 
 ```bash
-flutter build appbundle --release --dart-define=ENV=prod ...    # Android (Play)
-flutter build ios --release --dart-define=ENV=prod ...          # iOS (App Store)
+flutter build appbundle --release \
+  --dart-define=ENV=prod \
+  --dart-define=FIREBASE_PROJECT_ID=shortigo-prod \
+  --dart-define=SENTRY_DSN=<sentry-dsn> \
+  --dart-define=ADMOB_APP_ID_ANDROID=<android-admob-app-id> \
+  --dart-define=ADMOB_REWARDED_ANDROID=<android-rewarded-ad-unit-id> \
+  --dart-define=RC_API_KEY_ANDROID=<revenuecat-google-api-key>
+
+flutter build ios --release \
+  --dart-define=ENV=prod \
+  --dart-define=FIREBASE_PROJECT_ID=shortigo-prod \
+  --dart-define=SENTRY_DSN=<sentry-dsn> \
+  --dart-define=ADMOB_APP_ID_IOS=<ios-admob-app-id> \
+  --dart-define=ADMOB_REWARDED_IOS=<ios-rewarded-ad-unit-id> \
+  --dart-define=RC_API_KEY_IOS=<revenuecat-apple-api-key>
 ```
 
 Android release bundling, local upload signing, and the iOS no-codesign release build
 are verified locally. On this Xcode 15.2 machine, iOS pods are pinned to Firebase Apple
 SDK 11.11.0 and Google Mobile Ads SDK 11.2.0 through `google_mobile_ads` 5.1.0.
+Production builds log `ShortiGo release blockers` at startup when `ENV=prod` is used
+with empty service keys or Google test AdMob IDs.
 
 ## What's left
 

@@ -17,6 +17,12 @@ import 'data/iap/revenuecat_iap_gateway.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   env = Env.fromDefines();
+  if (env.hasReleaseBlockingIssues) {
+    debugPrint(
+      'ShortiGo release blockers:\n'
+      '${env.releaseBlockingIssues.map((issue) => '- $issue').join('\n')}',
+    );
+  }
   await FirebaseBootstrap.initialize();
   unawaited(
     FirebasePerformance.instance.setPerformanceCollectionEnabled(true),

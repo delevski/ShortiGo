@@ -27,12 +27,88 @@ class Env {
 
   bool get isProd => flavor == AppFlavor.prod;
 
+  static const _googleTestAdMobAppIdIos =
+      'ca-app-pub-3940256099942544~1458002511';
+  static const _googleTestAdMobAppIdAndroid =
+      'ca-app-pub-3940256099942544~3347511713';
+  static const _googleTestRewardedUnitIdIos =
+      'ca-app-pub-3940256099942544/1712485313';
+  static const _googleTestRewardedUnitIdAndroid =
+      'ca-app-pub-3940256099942544/5224354917';
+
+  @visibleForTesting
+  factory Env.fromValues({
+    AppFlavor flavor = AppFlavor.dev,
+    String firebaseProjectId = 'shortigo-prod',
+    String sentryDsn = '',
+    String adMobAppIdIos = _googleTestAdMobAppIdIos,
+    String adMobAppIdAndroid = _googleTestAdMobAppIdAndroid,
+    String adMobRewardedUnitIdIos = _googleTestRewardedUnitIdIos,
+    String adMobRewardedUnitIdAndroid = _googleTestRewardedUnitIdAndroid,
+    String revenueCatApiKeyIos = '',
+    String revenueCatApiKeyAndroid = '',
+  }) {
+    return Env._(
+      flavor: flavor,
+      firebaseProjectId: firebaseProjectId,
+      sentryDsn: sentryDsn,
+      adMobAppIdIos: adMobAppIdIos,
+      adMobAppIdAndroid: adMobAppIdAndroid,
+      adMobRewardedUnitIdIos: adMobRewardedUnitIdIos,
+      adMobRewardedUnitIdAndroid: adMobRewardedUnitIdAndroid,
+      revenueCatApiKeyIos: revenueCatApiKeyIos,
+      revenueCatApiKeyAndroid: revenueCatApiKeyAndroid,
+    );
+  }
+
+  List<String> get releaseBlockingIssues {
+    if (!isProd) {
+      return const <String>[];
+    }
+
+    final issues = <String>[];
+    if (sentryDsn.isEmpty) {
+      issues.add('SENTRY_DSN is empty.');
+    }
+    if (adMobAppIdIos.isEmpty) {
+      issues.add('ADMOB_APP_ID_IOS is empty.');
+    } else if (adMobAppIdIos == _googleTestAdMobAppIdIos) {
+      issues.add('ADMOB_APP_ID_IOS is still the Google test app ID.');
+    }
+    if (adMobAppIdAndroid.isEmpty) {
+      issues.add('ADMOB_APP_ID_ANDROID is empty.');
+    } else if (adMobAppIdAndroid == _googleTestAdMobAppIdAndroid) {
+      issues.add('ADMOB_APP_ID_ANDROID is still the Google test app ID.');
+    }
+    if (adMobRewardedUnitIdIos.isEmpty) {
+      issues.add('ADMOB_REWARDED_IOS is empty.');
+    } else if (adMobRewardedUnitIdIos == _googleTestRewardedUnitIdIos) {
+      issues.add('ADMOB_REWARDED_IOS is still the Google test ad unit ID.');
+    }
+    if (adMobRewardedUnitIdAndroid.isEmpty) {
+      issues.add('ADMOB_REWARDED_ANDROID is empty.');
+    } else if (adMobRewardedUnitIdAndroid == _googleTestRewardedUnitIdAndroid) {
+      issues.add(
+        'ADMOB_REWARDED_ANDROID is still the Google test ad unit ID.',
+      );
+    }
+    if (revenueCatApiKeyIos.isEmpty) {
+      issues.add('RC_API_KEY_IOS is empty.');
+    }
+    if (revenueCatApiKeyAndroid.isEmpty) {
+      issues.add('RC_API_KEY_ANDROID is empty.');
+    }
+    return issues;
+  }
+
+  bool get hasReleaseBlockingIssues => releaseBlockingIssues.isNotEmpty;
+
   /// Built from --dart-define values. Defaults to the single Spark project.
   factory Env.fromDefines() {
     const flavorStr = String.fromEnvironment('ENV', defaultValue: 'dev');
     const flavor = flavorStr == 'prod' ? AppFlavor.prod : AppFlavor.dev;
 
-    return Env._(
+    return Env.fromValues(
       flavor: flavor,
       firebaseProjectId: const String.fromEnvironment(
         'FIREBASE_PROJECT_ID',
@@ -44,19 +120,19 @@ class Env {
       ),
       adMobAppIdIos: const String.fromEnvironment(
         'ADMOB_APP_ID_IOS',
-        defaultValue: 'ca-app-pub-3940256099942544~1458002511',
+        defaultValue: _googleTestAdMobAppIdIos,
       ),
       adMobAppIdAndroid: const String.fromEnvironment(
         'ADMOB_APP_ID_ANDROID',
-        defaultValue: 'ca-app-pub-3940256099942544~3347511713',
+        defaultValue: _googleTestAdMobAppIdAndroid,
       ),
       adMobRewardedUnitIdIos: const String.fromEnvironment(
         'ADMOB_REWARDED_IOS',
-        defaultValue: 'ca-app-pub-3940256099942544/1712485313',
+        defaultValue: _googleTestRewardedUnitIdIos,
       ),
       adMobRewardedUnitIdAndroid: const String.fromEnvironment(
         'ADMOB_REWARDED_ANDROID',
-        defaultValue: 'ca-app-pub-3940256099942544/5224354917',
+        defaultValue: _googleTestRewardedUnitIdAndroid,
       ),
       revenueCatApiKeyIos: const String.fromEnvironment(
         'RC_API_KEY_IOS',
