@@ -49,11 +49,11 @@ Future<List<String>> _getFeatured(
   final decoded = jsonDecode(body) as Map<String, dynamic>;
   final fields = decoded['fields'] as Map<String, dynamic>? ?? {};
   final arr = fields['seriesIds'] as Map<String, dynamic>?;
-  final values = arr?['arrayValue']?['values'] as List<dynamic>? ?? [];
+  final arrayValue = arr?['arrayValue'] as Map<String, dynamic>?;
+  final values = arrayValue?['values'] as List<dynamic>? ?? [];
   return [
     for (final v in values)
-      if (v is Map<String, dynamic>)
-        v['stringValue'] as String? ?? '',
+      if (v is Map<String, dynamic>) v['stringValue'] as String? ?? '',
   ].where((s) => s.isNotEmpty).toList();
 }
 
@@ -71,8 +71,7 @@ Future<void> _setFeatured(
       'seriesIds': {
         'arrayValue': {
           'values': [
-            for (final id in seriesIds)
-              {'stringValue': id},
+            for (final id in seriesIds) {'stringValue': id},
           ],
         },
       },
@@ -89,10 +88,6 @@ Future<void> _setFeatured(
   final text = await res.transform(utf8.decoder).join();
   if (res.statusCode != 200) {
     // try create
-    final createUri = uri.replace(
-      path: uri.path,
-      queryParameters: {'documentId': 'featured'},
-    );
     final post = await client.postUrl(
       Uri.parse(
         'https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents/admin?documentId=featured',

@@ -1,18 +1,19 @@
 # ShortiGo v1 Release Verification
 
-Date: 2026-06-02
+Date: 2026-06-03
 Branch: main
 Version: 0.1.0+2
 
 ## Automated Checks
 
-- Flutter analyze: passed on 2026-06-02.
-- Flutter unit/widget tests: passed on 2026-06-02.
+- Flutter analyze: passed on 2026-06-03.
+- Flutter unit/widget tests: passed on 2026-06-03.
 - Admin Studio build: passed on 2026-06-02 with Vite's Firebase bundle-size warning.
 - Integration cold-start test: passed on Android emulator on 2026-06-01.
-- iOS release build: blocked locally. `flutter build ios --release --no-codesign` stops because CocoaPods is installed with a broken Ruby shebang at `/usr/local/bin/pod`.
-- Android release AAB: passed on 2026-06-02. `flutter build appbundle --release --dart-define=ENV=prod ...` produced `build/app/outputs/bundle/release/app-release.aab` (59.5MB).
+- iOS release build: passed on 2026-06-03. `flutter build ios --release --no-codesign --dart-define=ENV=prod` produced `build/ios/iphoneos/Runner.app` (88.1MB).
+- Android release AAB: passed on 2026-06-03. `flutter build appbundle --release --dart-define=ENV=prod` produced `build/app/outputs/bundle/release/app-release.aab` (59.3MB).
 - Android release signing: local upload keystore and ignored `android/key.properties` are configured. Signed AAB build passed on 2026-06-02.
+- Local iOS build environment uses Homebrew `ruby@3.1`, CocoaPods 1.16.2, Firebase Apple SDK 11.11.0, and Google Mobile Ads SDK 11.2.0 for Xcode 15.2 compatibility.
 
 ## Cloud Setup
 
@@ -59,7 +60,7 @@ Version: 0.1.0+2
 - Delete the unused `shortigo-dev` Firebase project. Completed on 2026-06-02.
 - Configure Firebase Auth providers in the console. Completed for Email/Password and Google on 2026-06-02.
 - Provision AdMob, RevenueCat, Sentry, and Firebase Performance.
-- Reinstall CocoaPods with the active macOS Ruby, or install via Homebrew/rbenv and rerun `pod --version`.
+- Keep the Homebrew Ruby/CocoaPods environment available for iOS builds, or install an equivalent Ruby/CocoaPods toolchain and rerun `pod --version`.
 - Install Android command-line tools, accept Android licenses, reinstall a complete NDK, and rerun `flutter doctor -v`. Completed on 2026-06-02.
 - Replace placeholder `--dart-define` values with production AdMob and RevenueCat keys.
 - Configure Android release signing before uploading to Play Console. Local upload signing is configured; back up `android/app/upload-keystore.jks` and `android/key.properties` before store submission.

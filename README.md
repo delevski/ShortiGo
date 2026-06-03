@@ -6,7 +6,7 @@ backend is configured for one **no-cost Firebase Spark** project.
 
 > Status: **v1 MVP — feature-complete, pre-release.** The app builds, analyzes clean,
 > and passes its unit/widget/integration tests. It is **not yet shippable** because it
-> still needs third-party service keys, release signing, iOS toolchain repair, and manual
+> still needs third-party service keys, store release signing/archive work, and manual
 > device QA. See [What's left](#whats-left) for the exact gaps.
 
 ---
@@ -458,8 +458,9 @@ flutter build appbundle --release --dart-define=ENV=prod ...    # Android (Play)
 flutter build ios --release --dart-define=ENV=prod ...          # iOS (App Store)
 ```
 
-Android release bundling and local upload signing are verified.
-iOS still requires CocoaPods/toolchain repair — see below.
+Android release bundling, local upload signing, and the iOS no-codesign release build
+are verified locally. On this Xcode 15.2 machine, iOS pods are pinned to Firebase Apple
+SDK 11.11.0 and Google Mobile Ads SDK 11.2.0 through `google_mobile_ads` 5.1.0.
 
 ## What's left
 
@@ -480,9 +481,9 @@ as-is**. Concrete blockers, roughly in priority order:
 - [ ] RevenueCat, Sentry, and AdMob accounts/keys are not wired yet; defaults are empty
       or Google test IDs.
 
-**Build toolchain (release blockers)**
+**Build toolchain**
 
-- [ ] iOS release build blocked: CocoaPods has a broken Ruby shebang at `/usr/local/bin/pod`.
+- [x] iOS no-codesign release build succeeds with the local Xcode/CocoaPods toolchain.
 - [x] Android release AAB builds successfully with the local SDK/NDK toolchain.
 - [x] Android release signing uses local ignored `android/key.properties` when present.
 

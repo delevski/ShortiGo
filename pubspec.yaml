@@ -42,7 +42,7 @@ dependencies:
   cached_network_image: ^3.4.1
 
   # Monetization
-  google_mobile_ads: ^5.1.0
+  google_mobile_ads: 5.1.0
   purchases_flutter: ^10.2.0
 
   # Observability
