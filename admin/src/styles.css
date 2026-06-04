@@ -99,6 +99,11 @@ body {
   background: var(--error-bg);
 }
 
+.card--info {
+  border-color: rgba(99, 102, 241, 0.35);
+  background: var(--info-bg);
+}
+
 .card--auth {
   padding: 16px 20px;
 }
@@ -1371,4 +1376,125 @@ select:focus {
   justify-content: flex-end;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.user-row__role {
+  display: inline-block;
+  margin-top: 4px;
+}
+
+.user-row__uid {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.field-grid {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+@media (min-width: 560px) {
+  .field-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.providers-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.providers-list__item {
+  padding: 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+}
+
+.providers-list__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.providers-list__head code {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.providers-list__users ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.providers-list__users li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.activity-log__filters {
+  margin-top: 12px;
+}
+
+.activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.activity-list__item {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+}
+
+.activity-list__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.activity-list__action {
+  color: var(--primary);
+}
+
+.activity-list__actor {
+  margin: 6px 0 0;
+  font-size: 14px;
+}
+
+.activity-list__target {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.activity-list__metadata {
+  margin: 8px 0 0;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  font-size: 11px;
+  overflow-x: auto;
+  max-height: 120px;
 }

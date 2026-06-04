@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
@@ -8,19 +15,17 @@ import {
 } from "firebase/auth";
 import {
   arrayUnion,
-  collection,
   doc,
   getDoc,
-  getDocs,
-  query,
   serverTimestamp,
   setDoc,
-  where,
 } from "firebase/firestore";
 import { auth, db, firebaseConfigError } from "./firebase";
+import { ActivityLog } from "./components/ActivityLog";
 import { FileDropzone } from "./components/FileDropzone";
 import { MediaLibrary } from "./components/MediaLibrary";
 import { MediaPreview } from "./components/MediaPreview";
+import { ProvidersAdmin } from "./components/ProvidersAdmin";
 import { StatusBanner } from "./components/StatusBanner";
 import { useToast } from "./components/ToastStack";
 import { UploadOverlay } from "./components/UploadOverlay";
@@ -44,26 +49,27 @@ import {
   findEpisodesByCloudinaryId,
   type PublishedEpisodeRow,
 } from "./lib/firestoreEpisodes";
+import { writeAuditEvent } from "./lib/auditLog";
+import {
+  loadStudioAccess,
+  providerPrefixedSeriesId,
+  type StudioAccess,
+} from "./lib/studioAccess";
 import {
   ensureSeriesDoc,
   fetchNextEpisodeOrder,
+  fetchSeriesOptions,
+  getSeriesOwnership,
   syncSeriesStats,
   type SeriesMeta,
+  type SeriesOption,
 } from "./lib/seriesFirestore";
-
-type SeriesOption = {
-  id: string;
-  title: string;
-  coverUrl: string;
-  category: string;
-  isVip: boolean;
-};
 
 type StatusVariant = "idle" | "success" | "error" | "info";
 
 type OverlayStep = { label: string; done: boolean; active: boolean };
 
-type AppView = "upload" | "library";
+type AppView = "upload" | "library" | "providers" | "activity";
 
 function isHttpUrl(value: string): boolean {
   return value.startsWith("http://") || value.startsWith("https://");
@@ -89,25 +95,6 @@ function statusVariantFromMessage(message: string): StatusVariant {
     return "idle";
   }
   return "info";
-}
-
-async function fetchSeriesOptions(): Promise<SeriesOption[]> {
-  if (!db) {
-    return [];
-  }
-  const snap = await getDocs(collection(db, "series"));
-  const rows = snap.docs.map((item) => {
-    const data = item.data();
-    return {
-      id: item.id,
-      title: typeof data.title === "string" ? data.title : item.id,
-      coverUrl: typeof data.coverUrl === "string" ? data.coverUrl : "",
-      category: typeof data.category === "string" ? data.category : "new",
-      isVip: data.isVip === true,
-    };
-  });
-  rows.sort((a, b) => a.title.localeCompare(b.title));
-  return rows;
 }
 
 function initialUploadSteps(hasThumbnail: boolean): OverlayStep[] {
@@ -185,7 +172,8 @@ export function App() {
   const [overlayPercent, setOverlayPercent] = useState(0);
   const [overlayIndeterminate, setOverlayIndeterminate] = useState(false);
   const [overlaySteps, setOverlaySteps] = useState<OverlayStep[]>([]);
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [studioAccess, setStudioAccess] = useState<StudioAccess | null>(null);
+  const auditedSignInUid = useRef<string | null>(null);
   const [publishedEpisodes, setPublishedEpisodes] = useState<
     PublishedEpisodeRow[]
   >([]);
@@ -203,16 +191,24 @@ export function App() {
   const statusVariant = statusVariantFromMessage(status);
   const cloudinaryReady = !cloudinaryConfigError();
 
+  const catalogScope =
+    studioAccess?.role === "provider" ? studioAccess.providerId : null;
+
   const refreshSeriesList = useCallback(async () => {
-    if (!db || !user) {
+    if (!db || !user || !studioAccess?.canPublish) {
       return;
     }
-    const options = await fetchSeriesOptions();
+    try {
+    const options = await fetchSeriesOptions(catalogScope);
     setSeriesOptions(options);
     if (options.length > 0 && !selectedSeriesId) {
       setSelectedSeriesId(options[0].id);
     }
-  }, [user, selectedSeriesId]);
+    } catch (error) {
+      logError("Failed to load series list", error, { catalogScope });
+      toast.error("Could not load series", toUserMessage(error));
+    }
+  }, [user, selectedSeriesId, studioAccess, catalogScope, toast]);
 
   const applyExistingSeries = useCallback((option: SeriesOption) => {
     setSelectedSeriesId(option.id);
@@ -240,20 +236,46 @@ export function App() {
 
   useEffect(() => {
     if (!user) {
+      setStudioAccess(null);
+      return;
+    }
+    void loadStudioAccess(user.uid)
+      .then(setStudioAccess)
+      .catch((error) => {
+        logError("Studio access check failed", error, { uid: user.uid });
+        setStudioAccess(null);
+        toast.error(
+          "Permission error",
+          `Could not read adminUsers/${user.uid}. ${toUserMessage(error)}`,
+        );
+      });
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !studioAccess?.canPublish) {
       return;
     }
     void refreshSeriesList();
-  }, [user, refreshSeriesList]);
+  }, [user, studioAccess, refreshSeriesList]);
 
   useEffect(() => {
-    if (!user || !db) {
-      setIsAdmin(null);
+    if (!user || !studioAccess || studioAccess.role === "none") {
       return;
     }
-    void getDoc(doc(db, "adminUsers", user.uid))
-      .then((snap) => setIsAdmin(snap.exists()))
-      .catch(() => setIsAdmin(false));
-  }, [user]);
+    if (auditedSignInUid.current === user.uid) {
+      return;
+    }
+    auditedSignInUid.current = user.uid;
+    void writeAuditEvent({
+      action: "auth.sign_in",
+      actorUid: user.uid,
+      actorEmail: user.email,
+      role: studioAccess.role,
+      providerId: studioAccess.providerId,
+      targetType: "session",
+      targetId: user.uid,
+    });
+  }, [user, studioAccess]);
 
   const refreshPublishedEpisodes = useCallback(async (targetSeriesId: string) => {
     const rows = await fetchPublishedEpisodes(targetSeriesId);
@@ -279,8 +301,10 @@ export function App() {
     if (!needle || needle.length < 8) {
       return;
     }
-    void findEpisodesByCloudinaryId(needle).then(setCloudinaryMatches);
-  }, [videoUrl]);
+    void findEpisodesByCloudinaryId(needle, catalogScope).then(
+      setCloudinaryMatches,
+    );
+  }, [videoUrl, catalogScope]);
 
   useEffect(() => {
     if (seriesMode !== "existing" || !selectedSeriesId) {
@@ -304,9 +328,14 @@ export function App() {
       return;
     }
     if (seriesTitle.trim()) {
-      setSeriesId(slugifySeriesId(seriesTitle));
+      const slug = slugifySeriesId(seriesTitle);
+      if (studioAccess?.role === "provider" && studioAccess.providerId) {
+        setSeriesId(providerPrefixedSeriesId(studioAccess.providerId, slug));
+      } else {
+        setSeriesId(slug);
+      }
     }
-  }, [seriesMode, seriesTitle]);
+  }, [seriesMode, seriesTitle, studioAccess]);
 
   useEffect(() => {
     if (seriesMode === "new" && seriesId.trim()) {
@@ -405,10 +434,25 @@ export function App() {
     }
 
     setStatus("Creating series record...");
-    await ensureSeriesDoc(safeSeriesId, seriesMeta);
+    const ownershipForCreate =
+      studioAccess?.role === "provider" &&
+      studioAccess.providerId &&
+      user
+        ? {
+            providerId: studioAccess.providerId,
+            createdByUid: user.uid,
+          }
+        : undefined;
+    const seriesCreate = await ensureSeriesDoc(
+      safeSeriesId,
+      seriesMeta,
+      ownershipForCreate,
+    );
 
-    setStatus("Saving episode to Firestore...");
-    await setDoc(episodeRef, {
+    const seriesOwnership =
+      (await getSeriesOwnership(safeSeriesId)) ?? ownershipForCreate;
+
+    const episodePayload: Record<string, unknown> = {
       id: episodeId,
       seriesId: safeSeriesId,
       order,
@@ -416,12 +460,22 @@ export function App() {
       durationSec: safeDuration,
       videoUrl: safeVideoUrl,
       thumbnailUrl: safeThumbnailUrl,
-    });
+    };
+    if (seriesOwnership?.providerId && seriesOwnership.createdByUid) {
+      episodePayload.providerId = seriesOwnership.providerId;
+      episodePayload.createdByUid = seriesOwnership.createdByUid;
+    } else if (ownershipForCreate) {
+      episodePayload.providerId = ownershipForCreate.providerId;
+      episodePayload.createdByUid = ownershipForCreate.createdByUid;
+    }
+
+    setStatus("Saving episode to Firestore...");
+    await setDoc(episodeRef, episodePayload);
 
     setStatus("Syncing series episode count...");
     const stats = await syncSeriesStats(safeSeriesId, seriesMeta);
 
-    if (addToForYou) {
+    if (addToForYou && studioAccess?.canWriteFeatured) {
       setStatus("Adding series to For You...");
       await setDoc(
         doc(db, "admin", "featured"),
@@ -431,6 +485,48 @@ export function App() {
         },
         { merge: true },
       );
+    }
+
+    if (studioAccess && user) {
+      await writeAuditEvent({
+        action: existing.exists() ? "episode.replace" : "episode.publish",
+        actorUid: user.uid,
+        actorEmail: user.email,
+        role: studioAccess.role,
+        providerId: studioAccess.providerId,
+        targetType: "episode",
+        targetId: episodeId,
+        seriesId: safeSeriesId,
+        metadata: {
+          order,
+          durationSec: safeDuration,
+          seriesCreated: seriesCreate.created,
+        },
+      });
+      if (seriesCreate.created) {
+        await writeAuditEvent({
+          action: "series.create",
+          actorUid: user.uid,
+          actorEmail: user.email,
+          role: studioAccess.role,
+          providerId: studioAccess.providerId,
+          targetType: "series",
+          targetId: safeSeriesId,
+          seriesId: safeSeriesId,
+          metadata: { title: safeSeriesTitle },
+        });
+      } else {
+        await writeAuditEvent({
+          action: "series.update",
+          actorUid: user.uid,
+          actorEmail: user.email,
+          role: studioAccess.role,
+          providerId: studioAccess.providerId,
+          targetType: "series",
+          targetId: safeSeriesId,
+          seriesId: safeSeriesId,
+        });
+      }
     }
 
     return {
@@ -461,10 +557,10 @@ export function App() {
     if (!db) {
       return;
     }
-    if (isAdmin === false) {
+    if (!studioAccess?.canPublish) {
       toast.error(
         "Cannot publish",
-        `Create adminUsers/${user?.uid ?? "{uid}"} in Firestore first.`,
+        `Create or activate adminUsers/${user?.uid ?? "{uid}"} in Firestore first.`,
       );
       return;
     }
@@ -603,12 +699,43 @@ export function App() {
       steps = markStep(steps, stepIndex, true, false);
       setOverlaySteps([...steps]);
 
+      if (user && studioAccess && studioAccess.role !== "none") {
+        await writeAuditEvent({
+          action: "upload.cloudinary.success",
+          actorUid: user.uid,
+          actorEmail: user.email,
+          role: studioAccess.role,
+          providerId: studioAccess.providerId,
+          targetType: "cloudinary",
+          targetId: cloudinaryPublicIdFromUrl(deliveryUrl),
+          seriesId: activeSeriesId.trim() || null,
+          metadata: {
+            fileName: videoFile.name,
+            durationSec: detectedDuration,
+          },
+        });
+      }
+
       return {
         videoUrl: deliveryUrl,
         thumbnailUrl: resolvedThumbnailUrl,
         durationSec: detectedDuration,
       };
     } catch (error) {
+      if (user && studioAccess && studioAccess.role !== "none") {
+        await writeAuditEvent({
+          action: "upload.cloudinary.failure",
+          actorUid: user.uid,
+          actorEmail: user.email,
+          role: studioAccess.role,
+          providerId: studioAccess.providerId,
+          targetType: "cloudinary",
+          metadata: {
+            fileName: videoFile.name,
+            error: toUserMessage(error),
+          },
+        });
+      }
       notifyError("Cloudinary upload failed", error);
       return null;
     } finally {
@@ -630,10 +757,10 @@ export function App() {
   }
 
   async function handleUploadAndPublish() {
-    if (isAdmin === false) {
+    if (!studioAccess?.canPublish) {
       toast.error(
         "Cannot publish",
-        `Create adminUsers/${user?.uid ?? "{uid}"} in Firestore first.`,
+        `Create or activate adminUsers/${user?.uid ?? "{uid}"} in Firestore first.`,
       );
       return;
     }
@@ -722,9 +849,27 @@ export function App() {
         >
           Media library
         </button>
+        {studioAccess?.canManageProviders ? (
+          <button
+            type="button"
+            className={`app-nav__item ${view === "providers" ? "is-active" : ""}`}
+            onClick={() => setView("providers")}
+          >
+            Providers
+          </button>
+        ) : null}
+        {studioAccess?.canViewAudit ? (
+          <button
+            type="button"
+            className={`app-nav__item ${view === "activity" ? "is-active" : ""}`}
+            onClick={() => setView("activity")}
+          >
+            Activity
+          </button>
+        ) : null}
       </nav>
 
-      {user && isAdmin === false && (
+      {user && studioAccess?.role === "none" && (
         <section className="card card--alert">
           <h2 className="section-title">Cannot publish yet</h2>
           <p>
@@ -733,10 +878,21 @@ export function App() {
           </p>
           <p>
             <code>adminUsers/{user.uid}</code> (create in Firebase Console →
-            Firestore).
+            Firestore, or ask a super-admin to link you under Providers).
           </p>
         </section>
       )}
+
+      {user && studioAccess?.role === "provider" && studioAccess.providerId ? (
+        <section className="card card--info">
+          <p className="hint">
+            Provider account · <strong>{studioAccess.displayName ?? studioAccess.providerId}</strong>
+            {" "}· series IDs are prefixed with{" "}
+            <code>{studioAccess.providerId}_</code>. You can upload and edit your
+            content but cannot delete or manage other providers.
+          </p>
+        </section>
+      ) : null}
 
       <section className="card card--auth">
         {!user ? (
@@ -748,6 +904,24 @@ export function App() {
             <div className="user-row__info">
               <span className="user-row__label">Signed in</span>
               <span className="user-row__email">{user.email}</span>
+              {studioAccess && studioAccess.role !== "none" ? (
+                <span className="user-row__role badge">
+                  {studioAccess.role === "superAdmin" ? "Super admin" : "Provider"}
+                </span>
+              ) : null}
+              <span className="user-row__uid hint">
+                UID: <code>{user.uid}</code>{" "}
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(user.uid);
+                    toast.info("Copied", "Firebase UID copied to clipboard.");
+                  }}
+                >
+                  Copy UID
+                </button>
+              </span>
             </div>
             <button
               className="btn btn--ghost"
@@ -761,7 +935,22 @@ export function App() {
       </section>
 
       {view === "library" ? (
-        <MediaLibrary userReady={!!user} canDelete={isAdmin !== false} />
+        <MediaLibrary
+          userReady={!!user && studioAccess?.role !== "none"}
+          canDelete={studioAccess?.canDelete === true}
+          scopeProviderId={catalogScope}
+          studioAccess={studioAccess}
+          actorUid={user?.uid}
+          actorEmail={user?.email}
+        />
+      ) : null}
+
+      {view === "providers" && user && studioAccess?.canManageProviders ? (
+        <ProvidersAdmin user={user} studioAccess={studioAccess} />
+      ) : null}
+
+      {view === "activity" && studioAccess?.canViewAudit ? (
+        <ActivityLog />
       ) : null}
 
       {view === "upload" ? (
@@ -964,14 +1153,16 @@ export function App() {
               />
               VIP locked episode
             </label>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={addToForYou}
-                onChange={(e) => setAddToForYou(e.target.checked)}
-              />
-              Add to For You
-            </label>
+            {studioAccess?.canWriteFeatured ? (
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={addToForYou}
+                  onChange={(e) => setAddToForYou(e.target.checked)}
+                />
+                Add to For You
+              </label>
+            ) : null}
             <label className="check">
               <input
                 type="checkbox"
@@ -1023,13 +1214,13 @@ export function App() {
                 loading ||
                 !cloudinaryReady ||
                 !activeSeriesId.trim() ||
-                isAdmin === false
+                !studioAccess?.canPublish
               }
               type="button"
               onClick={handleUploadAndPublish}
               title={
-                isAdmin === false
-                  ? "Requires adminUsers/{uid} in Firestore"
+                !studioAccess?.canPublish
+                  ? "Requires an active adminUsers/{uid} document"
                   : undefined
               }
             >
@@ -1072,12 +1263,12 @@ export function App() {
               <button
                 className="btn btn--success"
                 disabled={
-                  !canSubmit || loading || uploadingMedia || isAdmin === false
+                  !canSubmit || loading || uploadingMedia || !studioAccess?.canPublish
                 }
                 type="submit"
                 title={
-                  isAdmin === false
-                    ? "Requires adminUsers/{uid} in Firestore"
+                  !studioAccess?.canPublish
+                    ? "Requires an active adminUsers/{uid} document"
                     : undefined
                 }
               >

@@ -39,12 +39,20 @@ export async function fetchPublishedEpisodes(
 /** Find published episodes whose video URL contains a Cloudinary public id fragment. */
 export async function findEpisodesByCloudinaryId(
   publicIdFragment: string,
+  scopeProviderId?: string | null,
 ): Promise<(PublishedEpisodeRow & { seriesId: string })[]> {
   if (!db || !publicIdFragment.trim()) {
     return [];
   }
   const needle = publicIdFragment.trim();
-  const snap = await getDocs(collection(db, "episodes"));
+  const snap = scopeProviderId
+    ? await getDocs(
+        query(
+          collection(db, "episodes"),
+          where("providerId", "==", scopeProviderId),
+        ),
+      )
+    : await getDocs(collection(db, "episodes"));
   const matches: (PublishedEpisodeRow & { seriesId: string })[] = [];
   for (const item of snap.docs) {
     const data = item.data();

@@ -5,21 +5,174 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isAdmin() {
+    function adminUserPath() {
+      return /databases/$(db)/documents/adminUsers/$(request.auth.uid);
+    }
+
+    function hasAdminUserDoc() {
+      return isSignedIn() && exists(adminUserPath());
+    }
+
+    function adminUserDoc() {
+      return get(adminUserPath());
+    }
+
+    // Read adminUsers fields defensively: legacy super-admin docs may omit
+    // `active`/`role`, and accessing a missing field directly denies the rule.
+    function adminActive() {
+      return adminUserDoc().data.get('active', true) != false;
+    }
+
+    function adminRole() {
+      return adminUserDoc().data.get('role', 'superAdmin');
+    }
+
+    function adminProviderId() {
+      return adminUserDoc().data.get('providerId', '');
+    }
+
+    function isActiveStudioUser() {
+      return hasAdminUserDoc() && adminActive();
+    }
+
+    // Any active adminUsers row that is not a provider is a super-admin (backward compatible).
+    function isSuperAdmin() {
       return isSignedIn() && (
         request.auth.token.admin == true ||
-        exists(/databases/$(db)/documents/adminUsers/$(request.auth.uid))
+        (hasAdminUserDoc() && adminActive() && adminRole() != 'provider')
       );
+    }
+
+    function isProvider() {
+      return isSignedIn()
+        && hasAdminUserDoc()
+        && adminActive()
+        && adminRole() == 'provider'
+        && adminProviderId() is string
+        && adminProviderId().size() > 0;
+    }
+
+    function userProviderId() {
+      return adminProviderId();
+    }
+
+    function requestSetsProviderOwnership() {
+      return request.resource.data.providerId == userProviderId()
+        && request.resource.data.createdByUid == request.auth.uid
+        && request.resource.data.providerId is string
+        && request.resource.data.createdByUid is string;
+    }
+
+    function ownershipFieldsUnchanged() {
+      return request.resource.data.providerId == resource.data.providerId
+        && (!('createdByUid' in resource.data)
+          || request.resource.data.createdByUid == resource.data.createdByUid);
+    }
+
+    function providerOwnsResource() {
+      return resource.data.providerId == userProviderId();
+    }
+
+    function resourceHasProviderOwnership() {
+      return ('providerId' in resource.data)
+        && resource.data.providerId is string
+        && resource.data.providerId.size() > 0;
+    }
+
+    function validAuditAction(action) {
+      return action in [
+        'auth.sign_in',
+        'episode.publish',
+        'episode.replace',
+        'series.create',
+        'series.update',
+        'media.delete',
+        'provider.create',
+        'provider.link_user',
+        'provider.deactivate',
+        'provider.update',
+        'upload.cloudinary.success',
+        'upload.cloudinary.failure'
+      ];
+    }
+
+    function validAuditCreate() {
+      let data = request.resource.data;
+      return data.actorUid == request.auth.uid
+        && data.actorUid is string
+        && validAuditAction(data.action)
+        && data.role is string
+        && data.role in ['superAdmin', 'provider']
+        && data.targetType is string
+        && data.targetType.size() > 0
+        && (!('providerId' in data) || data.providerId == null || data.providerId is string)
+        && (!('metadata' in data) || data.metadata is map);
+    }
+
+    function canWriteAudit() {
+      return isSignedIn()
+        && hasAdminUserDoc()
+        && isActiveStudioUser()
+        && (isSuperAdmin() || isProvider());
+    }
+
+    function validProviderAdminUserWrite() {
+      let data = request.resource.data;
+      return data.role == 'provider'
+        && data.providerId is string
+        && data.providerId.size() > 0
+        && data.active is bool
+        && (!('email' in data) || data.email == null || data.email is string)
+        && (!('displayName' in data)
+          || data.displayName == null
+          || data.displayName is string);
+    }
+
+    function providerUpdateOwnContent() {
+      return isProvider()
+        && resourceHasProviderOwnership()
+        && providerOwnsResource()
+        && ownershipFieldsUnchanged();
+    }
+
+    function validMobileUserCreate(uid) {
+      let data = request.resource.data;
+      return data.id == uid
+        && data.coins == 0
+        && data.bonus == 0
+        && data.get('isVip', false) == false
+        && data.get('vipExpiresAt', null) == null;
+    }
+
+    function validMobileUserUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      let oldBonus = resource.data.get('bonus', 0);
+      let newBonus = request.resource.data.get('bonus', 0);
+      return changed.hasOnly([
+          'favoriteSeriesIds',
+          'lastDailyCheckIn',
+          'bonus'
+        ])
+        && oldBonus is int
+        && newBonus is int
+        && newBonus >= oldBonus
+        && newBonus - oldBonus <= 12;
     }
 
     match /series/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create: if isSuperAdmin()
+        || (isProvider() && requestSetsProviderOwnership());
+      allow update: if isSuperAdmin() || providerUpdateOwnContent();
+      allow delete: if isSuperAdmin();
     }
 
     match /episodes/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create: if isSuperAdmin()
+        || (isProvider() && requestSetsProviderOwnership());
+      allow update: if isSuperAdmin() || providerUpdateOwnContent();
+      allow delete: if isSuperAdmin();
     }
 
     match /categories/{id} {
@@ -28,11 +181,13 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read, update: if request.auth != null && request.auth.uid == uid;
-      allow create: if request.auth != null
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow create: if isSignedIn()
         && request.auth.uid == uid
-        && request.resource.data.coins == 0
-        && request.resource.data.bonus == 0;
+        && validMobileUserCreate(uid);
+      allow update: if isSignedIn()
+        && request.auth.uid == uid
+        && validMobileUserUpdate();
     }
 
     match /users/{uid}/transactions/{txId} {
@@ -58,13 +213,36 @@ service cloud.firestore {
 
     match /admin/{doc} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isSuperAdmin();
     }
 
     match /adminUsers/{uid} {
-      // CRM checks adminUsers/{uid} on sign-in; only the signed-in user may read their row.
-      allow read: if isSignedIn() && request.auth.uid == uid;
-      allow write: if false;
+      allow read: if isSignedIn()
+        && (request.auth.uid == uid || isSuperAdmin());
+      allow create: if isSuperAdmin() && validProviderAdminUserWrite();
+      allow update: if isSuperAdmin() && validProviderAdminUserWrite();
+      allow delete: if false;
+    }
+
+    match /providers/{providerId} {
+      allow read: if isSuperAdmin() || (isProvider() && userProviderId() == providerId);
+      allow create: if isSuperAdmin()
+        && request.resource.data.id == providerId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.active is bool;
+      allow update: if isSuperAdmin()
+        && request.resource.data.id == providerId
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.active is bool;
+      allow delete: if false;
+    }
+
+    match /auditEvents/{eventId} {
+      allow read: if isSuperAdmin();
+      allow create: if canWriteAudit() && validAuditCreate();
+      allow update, delete: if false;
     }
   }
 }

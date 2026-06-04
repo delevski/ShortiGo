@@ -14,7 +14,9 @@ import {
 } from "../lib/deleteMessages";
 import { normalizeCloudinaryEpisodeUrls } from "../lib/cloudinary";
 import { cloudinaryPublicIdFromUrl } from "../lib/episodeMeta";
+import { writeAuditEvent } from "../lib/auditLog";
 import { logError } from "../lib/logger";
+import type { StudioAccess } from "../lib/studioAccess";
 import { useConfirm } from "./ConfirmDialog";
 import { useToast } from "./ToastStack";
 import { UploadOverlay, type OverlayStep } from "./UploadOverlay";
@@ -22,6 +24,10 @@ import { UploadOverlay, type OverlayStep } from "./UploadOverlay";
 type MediaLibraryProps = {
   userReady: boolean;
   canDelete: boolean;
+  scopeProviderId?: string | null;
+  studioAccess?: StudioAccess | null;
+  actorUid?: string;
+  actorEmail?: string | null;
 };
 
 type DeleteOverlayState = {
@@ -32,7 +38,34 @@ type DeleteOverlayState = {
   steps: OverlayStep[];
 };
 
-export function MediaLibrary({ userReady, canDelete }: MediaLibraryProps) {
+export function MediaLibrary({
+  userReady,
+  canDelete,
+  scopeProviderId = null,
+  studioAccess = null,
+  actorUid,
+  actorEmail,
+}: MediaLibraryProps) {
+  async function logMediaDelete(
+    targetId: string,
+    seriesId: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    if (!actorUid || !studioAccess || studioAccess.role === "none") {
+      return;
+    }
+    await writeAuditEvent({
+      action: "media.delete",
+      actorUid,
+      actorEmail,
+      role: studioAccess.role,
+      providerId: studioAccess.providerId,
+      targetType: "episode",
+      targetId,
+      seriesId,
+      metadata,
+    });
+  }
   const toast = useToast();
   const { confirm } = useConfirm();
   const [groups, setGroups] = useState<CatalogSeriesGroup[]>([]);
@@ -55,7 +88,7 @@ export function MediaLibrary({ userReady, canDelete }: MediaLibraryProps) {
     }
     setLoading(true);
     try {
-      const catalog = await fetchCatalog();
+      const catalog = await fetchCatalog(scopeProviderId);
       setGroups(catalog);
       setExpanded((prev) => {
         const next = { ...prev };
@@ -76,7 +109,7 @@ export function MediaLibrary({ userReady, canDelete }: MediaLibraryProps) {
     } finally {
       setLoading(false);
     }
-  }, [toast, userReady]);
+  }, [toast, userReady, scopeProviderId]);
 
   useEffect(() => {
     void load();
@@ -217,6 +250,10 @@ export function MediaLibrary({ userReady, canDelete }: MediaLibraryProps) {
 
     try {
       const result = await deleteEpisodeFromCatalog(episode);
+      await logMediaDelete(episode.id, episode.seriesId, {
+        displayName: episode.displayName,
+        bulk: false,
+      });
       setSelectedIds((prev) => {
         const next = new Set(prev);
         next.delete(episode.id);
@@ -331,6 +368,12 @@ export function MediaLibrary({ userReady, canDelete }: MediaLibraryProps) {
 
       await load();
 
+      for (const ep of episodes) {
+        if (result.deletedEpisodes.some((d) => d.id === ep.id)) {
+          await logMediaDelete(ep.id, ep.seriesId, { bulk: true });
+        }
+      }
+
       const toastPayload = bulkDeleteToastMessage(result);
       if (toastPayload.kind === "success") {
         toast.success(toastPayload.title, toastPayload.message);
@@ -388,6 +431,19 @@ export function MediaLibrary({ userReady, canDelete }: MediaLibraryProps) {
         group.episodes,
         group.seriesTitle,
       );
+      if (actorUid && studioAccess && studioAccess.role !== "none") {
+        await writeAuditEvent({
+          action: "media.delete",
+          actorUid,
+          actorEmail,
+          role: studioAccess.role,
+          providerId: studioAccess.providerId,
+          targetType: "series",
+          targetId: group.seriesId,
+          seriesId: group.seriesId,
+          metadata: { episodeCount: result.episodeCount },
+        });
+      }
       setSelectedIds((prev) => {
         const next = new Set(prev);
         for (const ep of group.episodes) {
@@ -450,8 +506,9 @@ export function MediaLibrary({ userReady, canDelete }: MediaLibraryProps) {
 
         {!canDelete && (
           <p className="library__warn">
-            You can browse, but deleting requires{" "}
-            <code>adminUsers/{"{uid}"}</code> in Firestore.
+            {studioAccess?.role === "provider"
+              ? "Provider accounts can browse their catalog but cannot delete. Contact a super-admin to remove content."
+              : "You can browse, but deleting requires a super-admin account."}
           </p>
         )}
 

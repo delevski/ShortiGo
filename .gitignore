@@ -34,6 +34,7 @@ dart_defines.prod.json
 # Build artifacts
 **/dist/
 **/*.tsbuildinfo
+firestore-debug.log
 *.apk
 *.aab
 *.ipa

@@ -17,6 +17,11 @@ Required fields and types:
 - `durationSec` (number/integer, `> 0`)
 - `isVipLocked` (boolean)
 
+Optional (CRM provider ownership — mobile app ignores extra fields):
+
+- `providerId` (string) — set on create; immutable
+- `createdByUid` (string) — Firebase Auth UID; immutable
+
 Example:
 
 ```json
@@ -48,6 +53,30 @@ Required fields for mobile discovery:
 - `createdAt` (timestamp or ISO string)
 - `popularity` (number/integer)
 - `isPublished` (boolean)
+
+Optional (CRM provider ownership):
+
+- `providerId` (string)
+- `createdByUid` (string)
+
+## Firestore: `adminUsers/{uid}`
+
+Studio access for the CRM:
+
+- No `role` or `role: "superAdmin"` — full catalog, delete, featured, provider management
+- `role: "provider"` + `providerId` + `active: true` — scoped upload/edit; no delete
+
+## Firestore: `providers/{providerId}`
+
+- `id`, `name`, `active`, optional `notes`, `createdAt`
+
+## Firestore: `auditEvents/{autoId}`
+
+Append-only trace (super admin read; studio users create):
+
+- `action` — e.g. `episode.publish`, `media.delete`, `auth.sign_in`, `provider.link_user`
+- `actorUid`, `actorEmail`, `role`, `providerId`
+- `targetType`, `targetId`, `seriesId`, `metadata`, `createdAt`
 
 ## Firestore Document: `admin/featured`
 

@@ -38,14 +38,30 @@ export type CatalogSeriesGroup = {
   episodes: CatalogEpisode[];
 };
 
-export async function fetchCatalog(): Promise<CatalogSeriesGroup[]> {
+export async function fetchCatalog(
+  scopeProviderId?: string | null,
+): Promise<CatalogSeriesGroup[]> {
   if (!db) {
     return [];
   }
 
   const [seriesSnap, episodesSnap] = await Promise.all([
-    getDocs(collection(db, "series")),
-    getDocs(collection(db, "episodes")),
+    scopeProviderId
+      ? getDocs(
+          query(
+            collection(db, "series"),
+            where("providerId", "==", scopeProviderId),
+          ),
+        )
+      : getDocs(collection(db, "series")),
+    scopeProviderId
+      ? getDocs(
+          query(
+            collection(db, "episodes"),
+            where("providerId", "==", scopeProviderId),
+          ),
+        )
+      : getDocs(collection(db, "episodes")),
   ]);
 
   const seriesById = new Map<

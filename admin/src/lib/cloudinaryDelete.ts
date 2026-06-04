@@ -1,3 +1,4 @@
+import { auth } from "../firebase";
 import { AppError } from "./appError";
 import { cloudinaryPublicIdFromUrl } from "./episodeMeta";
 import { logInfo } from "./logger";
@@ -53,9 +54,20 @@ export async function deleteCloudinaryAssets(
     publicIds: assets.map((a) => a.publicId),
   });
 
+  const idToken = await auth?.currentUser?.getIdToken();
+  if (!idToken) {
+    throw new AppError(
+      "Sign in required to delete Cloudinary assets.",
+      "CLOUDINARY_DELETE_AUTH",
+    );
+  }
+
   const response = await fetch("/api/cloudinary/delete", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${idToken}`,
+    },
     body: JSON.stringify({ assets }),
   });
 

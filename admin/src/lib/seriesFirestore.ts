@@ -17,6 +17,20 @@ export type SeriesMeta = {
   isVip: boolean;
 };
 
+export type ContentOwnership = {
+  providerId: string | null;
+  createdByUid: string;
+};
+
+export type SeriesOption = {
+  id: string;
+  title: string;
+  coverUrl: string;
+  category: string;
+  isVip: boolean;
+  providerId?: string | null;
+};
+
 export type SeriesRecord = SeriesMeta & {
   id: string;
   episodeCount: number;
@@ -92,13 +106,14 @@ export async function syncSeriesStats(
 export async function ensureSeriesDoc(
   seriesId: string,
   meta: SeriesMeta,
-): Promise<void> {
+  ownership?: ContentOwnership,
+): Promise<{ created: boolean }> {
   if (!db) {
-    return;
+    return { created: false };
   }
   const seriesRef = doc(db, "series", seriesId);
   const existing = await getDoc(seriesRef);
-  const baseFields = {
+  const baseFields: Record<string, unknown> = {
     id: seriesId,
     title: meta.title,
     coverUrl: meta.coverUrl,
@@ -108,16 +123,75 @@ export async function ensureSeriesDoc(
   };
   if (existing.exists()) {
     await setDoc(seriesRef, baseFields, { merge: true });
-  } else {
-    await setDoc(seriesRef, {
-      ...baseFields,
-      description: "",
-      createdAt: serverTimestamp(),
-      popularity: 0,
-      episodeCount: 0,
-      totalDurationSec: 0,
-    });
+    return { created: false };
   }
+
+  const createPayload: Record<string, unknown> = {
+    ...baseFields,
+    description: "",
+    createdAt: serverTimestamp(),
+    popularity: 0,
+    episodeCount: 0,
+    totalDurationSec: 0,
+  };
+  if (ownership?.providerId && ownership.createdByUid) {
+    createPayload.providerId = ownership.providerId;
+    createPayload.createdByUid = ownership.createdByUid;
+  }
+  await setDoc(seriesRef, createPayload);
+  return { created: true };
+}
+
+export async function fetchSeriesOptions(
+  scopeProviderId?: string | null,
+): Promise<SeriesOption[]> {
+  if (!db) {
+    return [];
+  }
+  const snap = scopeProviderId
+    ? await getDocs(
+        query(
+          collection(db, "series"),
+          where("providerId", "==", scopeProviderId),
+        ),
+      )
+    : await getDocs(collection(db, "series"));
+
+  const rows: SeriesOption[] = snap.docs.map((item) => {
+    const data = item.data();
+    return {
+      id: item.id,
+      title: typeof data.title === "string" ? data.title : item.id,
+      coverUrl: typeof data.coverUrl === "string" ? data.coverUrl : "",
+      category: typeof data.category === "string" ? data.category : "new",
+      isVip: data.isVip === true,
+      providerId:
+        typeof data.providerId === "string" ? data.providerId : null,
+    };
+  });
+  rows.sort((a, b) => a.title.localeCompare(b.title));
+  return rows;
+}
+
+export async function getSeriesOwnership(
+  seriesId: string,
+): Promise<ContentOwnership | null> {
+  if (!db || !seriesId.trim()) {
+    return null;
+  }
+  const snap = await getDoc(doc(db, "series", seriesId.trim()));
+  if (!snap.exists()) {
+    return null;
+  }
+  const data = snap.data();
+  const providerId =
+    typeof data.providerId === "string" ? data.providerId : null;
+  const createdByUid =
+    typeof data.createdByUid === "string" ? data.createdByUid : "";
+  if (!providerId || !createdByUid) {
+    return null;
+  }
+  return { providerId, createdByUid };
 }
 
 export async function fetchAllSeries(): Promise<SeriesRecord[]> {
