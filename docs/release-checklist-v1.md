@@ -1,17 +1,19 @@
 # ShortiGo v1 Release Verification
 
-Date: 2026-06-03
+Date: 2026-06-04
 Branch: main
 Version: 0.1.0+2
 
 ## Automated Checks
 
-- Flutter analyze: passed on 2026-06-03.
-- Flutter unit/widget tests: passed on 2026-06-03.
-- Admin Studio build: passed on 2026-06-02 with Vite's Firebase bundle-size warning.
+- Flutter analyze: passed on 2026-06-04 with no issues.
+- Flutter unit/widget tests: all 31 passed on 2026-06-04.
+- Admin Studio build: passed on 2026-06-04 with Vite's Firebase bundle-size warning.
+- Firestore security rules tests: all 4 passed in the emulator on 2026-06-04.
+- Cloud Functions TypeScript build: passed on 2026-06-04.
 - Integration cold-start test: passed on Android emulator on 2026-06-01.
-- iOS release build: passed on 2026-06-03. `flutter build ios --release --no-codesign --dart-define=ENV=prod` produced `build/ios/iphoneos/Runner.app` (88.1MB).
-- Android release AAB: passed on 2026-06-03. `flutter build appbundle --release --dart-define=ENV=prod` produced `build/app/outputs/bundle/release/app-release.aab` (59.3MB).
+- iOS release build: passed on 2026-06-04. `flutter build ios --release --no-codesign --dart-define=ENV=prod` produced `build/ios/iphoneos/Runner.app` (94.6MB).
+- Android release AAB: passed on 2026-06-04. `flutter build appbundle --release --dart-define=ENV=prod` produced `build/app/outputs/bundle/release/app-release.aab` (61.8MB).
 - Android release signing: local upload keystore and ignored `android/key.properties` are configured. Signed AAB build passed on 2026-06-02.
 - Local iOS build environment uses Homebrew `ruby@3.1`, CocoaPods 1.16.2, Firebase Apple SDK 11.11.0, and Google Mobile Ads SDK 11.2.0 for Xcode 15.2 compatibility.
 
@@ -23,8 +25,10 @@ Version: 0.1.0+2
 - Firestore rules file is committed at `firestore.rules`.
 - Firestore indexes file is committed at `firestore.indexes.json`.
 - Firestore rules and indexes are deployed to `shortigo-prod`.
-- Firestore rules now allow admin publishing only for users with an `admin: true`
-  custom claim or an `adminUsers/{uid}` allowlist document.
+- Firestore rules and all ten indexes were deployed to `shortigo-prod` on 2026-06-04.
+- Firestore rules support super-admin and provider-scoped Studio access.
+- Mobile users cannot self-grant VIP or coins. Spark-mode bonus changes are limited
+  to a maximum +12 per update while My List remains writable.
 - Android Firebase app is registered for `com.shortigo.shortigo`.
 - iOS Firebase app is registered for `com.shortigo.shortigo`.
 - Android debug SHA-1/SHA-256 fingerprints are registered for Google Sign-In.

@@ -495,6 +495,8 @@ as-is**. Concrete blockers, roughly in priority order:
 - [x] Unused Firebase project `shortigo-dev` was deleted/scheduled for deletion.
 - [x] Android/iOS Firebase apps are registered and platform config files are committed.
 - [x] Firebase Auth providers are enabled for Email/Password and Google.
+- [x] Studio provider RBAC, audit events, and provider-scoped catalog access are
+      implemented and deployed.
 - [ ] RevenueCat, Sentry, and AdMob accounts/keys are not wired yet; defaults are empty
       or Google test IDs.
 
@@ -509,6 +511,8 @@ as-is**. Concrete blockers, roughly in priority order:
 - [x] `/my-list` bottom-nav tab renders saved series, and series detail supports
       Save/Unsave.
 - [x] Logged-out users land on `/onboarding` with category previews before sign-in.
+- [x] Mobile Firestore writes cannot self-grant VIP or coins; Spark reward increments
+      are bounded by deployed rules and covered by emulator tests.
 - [ ] Rewards/VIP are Spark-mode demo flows. Production-grade server validation requires
       a future paid backend or another no-cost backend provider.
 
