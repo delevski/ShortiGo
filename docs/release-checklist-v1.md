@@ -13,7 +13,7 @@ Version: 0.1.0+2
 - Cloud Functions TypeScript build: passed on 2026-06-04.
 - Integration cold-start test: passed on Android emulator on 2026-06-01.
 - iOS release build: passed on 2026-06-04. `flutter build ios --release --no-codesign --dart-define=ENV=prod` produced `build/ios/iphoneos/Runner.app` (94.6MB).
-- Android release AAB: passed on 2026-06-04. `flutter build appbundle --release --dart-define=ENV=prod` produced `build/app/outputs/bundle/release/app-release.aab` (61.8MB).
+- Android release AAB: passed on 2026-06-04. `flutter build appbundle --release --dart-define=ENV=prod` produced `build/app/outputs/bundle/release/app-release.aab` (59.0MB).
 - Android release signing: local upload keystore and ignored `android/key.properties` are configured. Signed AAB build passed on 2026-06-02.
 - Local iOS build environment uses Homebrew `ruby@3.1`, CocoaPods 1.16.2, Firebase Apple SDK 11.11.0, and Google Mobile Ads SDK 11.2.0 for Xcode 15.2 compatibility.
 
