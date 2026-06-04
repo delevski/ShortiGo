@@ -499,11 +499,18 @@ as-is**. Concrete blockers, roughly in priority order:
       implemented and deployed.
 - [x] Production AdMob app and rewarded-ad IDs are configured locally in the
       ignored production defines file.
-- [ ] RevenueCat and Sentry accounts/keys are not wired yet.
+- [x] Sentry account/project and DSN are configured locally.
+- [x] RevenueCat Test Store sandbox is configured with the `vip` entitlement,
+      default offering, three products, and local sandbox API keys.
+- [ ] RevenueCat production App Store/Play Store mappings and keys require the
+      corresponding store app records.
 
 **Build toolchain**
 
-- [x] iOS no-codesign release build succeeds with the local Xcode/CocoaPods toolchain.
+- [x] Xcode iOS 17.2 runtime/platform registration is repaired and eligible
+      device/simulator destinations are available.
+- [ ] Reconfirm the fresh production iOS no-codesign release build after the
+      clean native dependency compilation completes.
 - [x] Android release AAB builds successfully with the local SDK/NDK toolchain.
 - [x] Android release signing uses local ignored `android/key.properties` when present.
 

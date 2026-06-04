@@ -15,12 +15,9 @@ Version: 0.1.0+2
 - Galaxy SM-S942B wireless ADB was repaired on 2026-06-04 using the stable
   `192.168.1.203:5555` endpoint. ShortiGo installed successfully and the
   physical-device cold-start integration test passed.
-- iOS release build: an earlier 2026-06-04 build passed and produced
-  `build/ios/iphoneos/Runner.app` (94.6MB). The latest verification attempt is
-  blocked by the local Xcode 15.2 environment reporting that its iOS 17.2
-  physical-device platform is not installed, even after the iOS 17.2 Simulator
-  runtime was installed. This is a local Xcode platform-registration blocker,
-  not an app compile error.
+- iOS 17.2 runtime/platform registration was repaired on 2026-06-04. Xcode now
+  lists the generic physical iOS destination and all iOS 17.2 simulator
+  destinations. A fresh production no-codesign release build is compiling.
 - Android release AAB: passed on 2026-06-04. `flutter build appbundle --release --dart-define=ENV=prod` produced `build/app/outputs/bundle/release/app-release.aab` (62.0MB).
 - Android release AAB with `dart_defines.prod.json`: passed on 2026-06-04 and
   produced `build/app/outputs/bundle/release/app-release.aab` (62.0MB).
@@ -58,6 +55,12 @@ Version: 0.1.0+2
 - Public privacy policy: `https://shortigo-prod.web.app/privacy`.
 - Public account-deletion instructions:
   `https://shortigo-prod.web.app/account-deletion`.
+- Sentry organization `ShortiGo` and Flutter project are configured in the EU
+  data region. The DSN is configured in the ignored production defines file.
+- RevenueCat project `ShortiGo` is configured on the free plan with the `vip`
+  entitlement, a default offering, and monthly, yearly, and lifetime Test Store
+  products. Sandbox API keys are configured in the ignored production defines
+  file.
 
 ## Manual Device Matrix
 
@@ -86,7 +89,8 @@ Version: 0.1.0+2
 - Configure Firebase Auth providers in the console. Completed for Email/Password and Google on 2026-06-02.
 - AdMob production app and rewarded-ad IDs are configured locally in the
   ignored `dart_defines.prod.json`.
-- Provision RevenueCat and Sentry. Firebase Performance is already enabled.
+- Provision RevenueCat and Sentry. Completed for Sentry and the RevenueCat Test
+  Store sandbox; Firebase Performance is already enabled.
 - Publish a public privacy policy and account-deletion request page. Completed
   on Firebase Hosting; add their URLs to Play Console and App Store Connect.
 - Play Console URL entry is blocked because the developer profile was removed
@@ -99,16 +103,20 @@ Version: 0.1.0+2
   legal/privacy counsel before store submission.
 - Configure RevenueCat products, entitlement `vip`, and App Store/Play Store
   product mappings; verify purchase and restore flows in both store sandboxes.
+  The `vip` entitlement, default offering, and three Test Store products are
+  complete. Real App Store and Play Store app mappings and production keys
+  remain blocked until the store app records are available.
 - Confirm a prod startup log has no `ShortiGo release blockers` entries.
 - Keep the Homebrew Ruby/CocoaPods environment available for iOS builds, or install an equivalent Ruby/CocoaPods toolchain and rerun `pod --version`.
 - Install Android command-line tools, accept Android licenses, reinstall a complete NDK, and rerun `flutter doctor -v`. Completed on 2026-06-02.
 - Replace placeholder `--dart-define` values with production `SENTRY_DSN`,
   `ADMOB_APP_ID_IOS`, `ADMOB_APP_ID_ANDROID`, `ADMOB_REWARDED_IOS`,
   `ADMOB_REWARDED_ANDROID`, `RC_API_KEY_IOS`, and `RC_API_KEY_ANDROID`.
+  Sentry and AdMob values are configured locally. RevenueCat currently uses
+  Test Store sandbox keys until the real store app mappings can be created.
 - Configure Android release signing before uploading to Play Console. Local upload signing is configured; back up `android/app/upload-keystore.jks` and `android/key.properties` before store submission.
 - Archive the iOS app in Xcode with the production Apple team and upload to App Store Connect.
-- Repair the local macOS/Xcode FSEvents state before the next iOS archive:
-  free disk space, restart macOS, launch Xcode once, install requested
-  components, and rerun `xcrun xcodebuild -checkFirstLaunchStatus`. The iOS
-  17.2 runtime image is downloaded, but installation currently fails because
-  the disk is almost full.
+- Repair the local macOS/Xcode runtime state before the next iOS archive.
+  Completed on 2026-06-04: generated caches were cleared, available disk space
+  increased, the stale runtime registration was replaced, and iOS 17.2 now
+  appears as an eligible build and simulator platform.
