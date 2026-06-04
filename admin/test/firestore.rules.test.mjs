@@ -6,7 +6,7 @@ import {
   assertSucceeds,
   initializeTestEnvironment,
 } from "@firebase/rules-unit-testing";
-import { doc, setDoc, updateDoc } from "firebase/firestore";
+import { deleteDoc, doc, setDoc, updateDoc } from "firebase/firestore";
 
 const projectId = "shortigo-rules-test";
 const userId = "mobile-user";
@@ -66,4 +66,22 @@ test("Spark rewards allow one bounded bonus increment", async () => {
   const db = testEnv.authenticatedContext(userId).firestore();
   await assertSucceeds(updateDoc(doc(db, "users", userId), { bonus: 12 }));
   await assertFails(updateDoc(doc(db, "users", userId), { bonus: 25 }));
+});
+
+test("mobile users can delete their profile", async () => {
+  const db = testEnv.authenticatedContext(userId).firestore();
+  await assertSucceeds(deleteDoc(doc(db, "users", userId)));
+});
+
+test("mobile users cannot delete transaction history", async () => {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(
+      doc(context.firestore(), "users", userId, "transactions", "tx-1"),
+      { userId, type: "spend" },
+    );
+  });
+  const db = testEnv.authenticatedContext(userId).firestore();
+  await assertFails(
+    deleteDoc(doc(db, "users", userId, "transactions", "tx-1")),
+  );
 });

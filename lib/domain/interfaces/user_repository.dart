@@ -8,6 +8,7 @@ abstract class UserRepository {
   Future<void> setDailyCheckIn(String userId, DateTime at);
   Future<void> saveSeries({required String userId, required String seriesId});
   Future<void> unsaveSeries({required String userId, required String seriesId});
+  Future<void> deletePersonalData(String userId);
   Future<void> grantDemoBonus({
     required String userId,
     required TxType type,

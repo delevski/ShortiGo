@@ -8,7 +8,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
+import '../../subscription/application/subscription_notifier.dart';
+import '../application/account_deletion_notifier.dart';
 import '../application/profile_notifier.dart';
+import 'account_actions_section.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -16,6 +19,7 @@ class ProfilePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(profileNotifierProvider);
+    final deletion = ref.watch(accountDeletionNotifierProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
@@ -115,6 +119,34 @@ class ProfilePage extends ConsumerWidget {
                   child: const Text('Get VIP'),
                 ),
               ],
+              const SizedBox(height: 16),
+              AccountActionsSection(
+                isDeleting: deletion.isDeleting,
+                error: deletion.error,
+                onRestorePurchases: () async {
+                  await ref
+                      .read(subscriptionNotifierProvider.notifier)
+                      .restorePurchases();
+                  if (!context.mounted) {
+                    return;
+                  }
+                  final result =
+                      ref.read(subscriptionNotifierProvider).valueOrNull;
+                  final message = result?.message ?? result?.error;
+                  if (message != null) {
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text(message)));
+                  }
+                },
+                onDeleteAccount: () async {
+                  final deleted = await ref
+                      .read(accountDeletionNotifierProvider.notifier)
+                      .deleteAccount();
+                  if (deleted && context.mounted) {
+                    context.go('/onboarding');
+                  }
+                },
+              ),
               const SizedBox(height: 16),
               FilledButton.tonal(
                 onPressed: () async => fb.FirebaseAuth.instance.signOut(),

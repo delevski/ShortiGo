@@ -81,6 +81,26 @@ class SubscribePage extends ConsumerWidget {
                         ),
                       ),
                     ),
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: state.isLoading
+                    ? null
+                    : () {
+                        ref
+                            .read(subscriptionNotifierProvider.notifier)
+                            .restorePurchases();
+                      },
+                icon: const Icon(Icons.restore),
+                label: const Text('Restore purchases'),
+              ),
+              if (state.message != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  state.message!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
+              ],
               if (state.error != null) ...[
                 const SizedBox(height: 12),
                 Text(

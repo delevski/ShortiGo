@@ -188,6 +188,7 @@ service cloud.firestore {
       allow update: if isSignedIn()
         && request.auth.uid == uid
         && validMobileUserUpdate();
+      allow delete: if isSignedIn() && request.auth.uid == uid;
     }
 
     match /users/{uid}/transactions/{txId} {

@@ -80,4 +80,14 @@ class RevenueCatIapGateway implements IapGateway {
       return false;
     }
   }
+
+  @override
+  Future<bool> restorePurchases() async {
+    if (!_initialized) {
+      return false;
+    }
+
+    final customerInfo = await Purchases.restorePurchases();
+    return customerInfo.entitlements.all['vip']?.isActive == true;
+  }
 }

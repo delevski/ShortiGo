@@ -74,6 +74,26 @@ void main() {
       expect(unsaved.favoriteSeriesIds, ['existing']);
     });
 
+    test('user deletion removes profile data but retains transaction ledger',
+        () async {
+      final db = FakeFirebaseFirestore();
+      final user = db.collection('users').doc('u1');
+      await user.set({
+        'email': 'u@example.com',
+        'createdAt': Timestamp.fromDate(DateTime.utc(2026, 6, 2)),
+      });
+      await user.collection('favorites').doc('s1').set({'saved': true});
+      await user.collection('events').doc('e1').set({'type': 'watch'});
+      await user.collection('transactions').doc('tx1').set({'type': 'spend'});
+
+      await FirestoreUserRepository(db).deletePersonalData('u1');
+
+      expect((await user.get()).exists, isFalse);
+      expect((await user.collection('favorites').get()).docs, isEmpty);
+      expect((await user.collection('events').get()).docs, isEmpty);
+      expect((await user.collection('transactions').get()).docs, hasLength(1));
+    });
+
     test('transactions map server timestamp ledger entries', () async {
       final db = FakeFirebaseFirestore();
       await db

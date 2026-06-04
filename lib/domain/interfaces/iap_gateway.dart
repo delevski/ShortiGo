@@ -26,4 +26,5 @@ abstract class IapGateway {
 
   Future<List<IapOffering>> getOfferings();
   Future<bool> purchase(String packageIdentifier);
+  Future<bool> restorePurchases();
 }

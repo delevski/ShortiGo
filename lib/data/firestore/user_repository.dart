@@ -65,6 +65,30 @@ class FirestoreUserRepository implements UserRepository {
   }
 
   @override
+  Future<void> deletePersonalData(String userId) async {
+    final user = _db.collection('users').doc(userId);
+    await _deleteCollection(user.collection('favorites'));
+    await _deleteCollection(user.collection('events'));
+    await user.delete();
+  }
+
+  Future<void> _deleteCollection(
+    CollectionReference<Map<String, dynamic>> collection,
+  ) async {
+    while (true) {
+      final snapshot = await collection.limit(400).get();
+      if (snapshot.docs.isEmpty) {
+        return;
+      }
+      final batch = _db.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    }
+  }
+
+  @override
   Future<void> grantDemoBonus({
     required String userId,
     required domain.TxType type,

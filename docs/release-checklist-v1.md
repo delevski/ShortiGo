@@ -7,13 +7,13 @@ Version: 0.1.0+2
 ## Automated Checks
 
 - Flutter analyze: passed on 2026-06-04 with no issues.
-- Flutter unit/widget tests: all 31 passed on 2026-06-04.
+- Flutter unit/widget tests: all 37 passed on 2026-06-04.
 - Admin Studio build: passed on 2026-06-04 with Vite's Firebase bundle-size warning.
-- Firestore security rules tests: all 4 passed in the emulator on 2026-06-04.
+- Firestore security rules tests: all 6 passed in the emulator on 2026-06-04.
 - Cloud Functions TypeScript build: passed on 2026-06-04.
 - Integration cold-start test: passed on Android emulator on 2026-06-01.
 - iOS release build: passed on 2026-06-04. `flutter build ios --release --no-codesign --dart-define=ENV=prod` produced `build/ios/iphoneos/Runner.app` (94.6MB).
-- Android release AAB: passed on 2026-06-04. `flutter build appbundle --release --dart-define=ENV=prod` produced `build/app/outputs/bundle/release/app-release.aab` (59.0MB).
+- Android release AAB: passed on 2026-06-04. `flutter build appbundle --release --dart-define=ENV=prod` produced `build/app/outputs/bundle/release/app-release.aab` (59.1MB).
 - Android release signing: local upload keystore and ignored `android/key.properties` are configured. Signed AAB build passed on 2026-06-02.
 - Local iOS build environment uses Homebrew `ruby@3.1`, CocoaPods 1.16.2, Firebase Apple SDK 11.11.0, and Google Mobile Ads SDK 11.2.0 for Xcode 15.2 compatibility.
 
@@ -29,6 +29,10 @@ Version: 0.1.0+2
 - Firestore rules support super-admin and provider-scoped Studio access.
 - Mobile users cannot self-grant VIP or coins. Spark-mode bonus changes are limited
   to a maximum +12 per update while My List remains writable.
+- Mobile users can delete their profile, My List, and viewing activity in-app.
+  Immutable transaction history remains protected from client deletion.
+- Updated account-deletion Firestore rules were deployed to `shortigo-prod` on
+  2026-06-04.
 - Android Firebase app is registered for `com.shortigo.shortigo`.
 - iOS Firebase app is registered for `com.shortigo.shortigo`.
 - Android debug SHA-1/SHA-256 fingerprints are registered for Google Sign-In.
@@ -52,6 +56,9 @@ Version: 0.1.0+2
 - [ ] Watch a rewarded ad and verify +12 bonus in `/profile`.
 - [ ] Daily check-in once, wait 20 hours, check in again.
 - [ ] Subscribe to VIP and verify `isVip: true` in `/profile` within 30 seconds.
+- [ ] Restore a previous VIP purchase and verify VIP access is refreshed.
+- [ ] Delete a test account and verify profile, My List, viewing activity, and
+  Firebase Auth account are removed while transaction history is retained.
 - [ ] Tap a locked VIP episode and verify the subscribe CTA appears.
 - [ ] Airplane mode: each error view shows "No connection".
 - [ ] Background for 1 hour, return, and verify content loads.
@@ -64,6 +71,12 @@ Version: 0.1.0+2
 - Delete the unused `shortigo-dev` Firebase project. Completed on 2026-06-02.
 - Configure Firebase Auth providers in the console. Completed for Email/Password and Google on 2026-06-02.
 - Provision AdMob, RevenueCat, Sentry, and Firebase Performance.
+- Publish a public privacy policy and account-deletion request page, then add
+  their URLs to Play Console and App Store Connect.
+- Review the disclosed transaction-history retention language with qualified
+  legal/privacy counsel before store submission.
+- Configure RevenueCat products, entitlement `vip`, and App Store/Play Store
+  product mappings; verify purchase and restore flows in both store sandboxes.
 - Confirm a prod startup log has no `ShortiGo release blockers` entries.
 - Keep the Homebrew Ruby/CocoaPods environment available for iOS builds, or install an equivalent Ruby/CocoaPods toolchain and rerun `pod --version`.
 - Install Android command-line tools, accept Android licenses, reinstall a complete NDK, and rerun `flutter doctor -v`. Completed on 2026-06-02.
@@ -72,3 +85,6 @@ Version: 0.1.0+2
   `ADMOB_REWARDED_ANDROID`, `RC_API_KEY_IOS`, and `RC_API_KEY_ANDROID`.
 - Configure Android release signing before uploading to Play Console. Local upload signing is configured; back up `android/app/upload-keystore.jks` and `android/key.properties` before store submission.
 - Archive the iOS app in Xcode with the production Apple team and upload to App Store Connect.
+- Repair the local macOS/Xcode FSEvents state before the next iOS archive:
+  free disk space, restart macOS, launch Xcode once, install requested
+  components, and rerun `xcrun xcodebuild -checkFirstLaunchStatus`.

@@ -9,11 +9,13 @@ class SubscriptionState {
     this.offerings = const [],
     this.isLoading = false,
     this.error,
+    this.message,
   });
 
   final List<IapOffering> offerings;
   final bool isLoading;
   final String? error;
+  final String? message;
 }
 
 class SubscriptionNotifier extends AsyncNotifier<SubscriptionState> {
@@ -34,6 +36,37 @@ class SubscriptionNotifier extends AsyncNotifier<SubscriptionState> {
       state = AsyncData(
         SubscriptionState(
           offerings: state.value?.offerings ?? const [],
+          error: error.toString(),
+        ),
+      );
+    }
+  }
+
+  Future<void> restorePurchases() async {
+    final offerings = state.value?.offerings ?? const <IapOffering>[];
+    state = AsyncData(
+      SubscriptionState(
+        offerings: offerings,
+        isLoading: true,
+      ),
+    );
+    try {
+      final restored = await ref.read(iapGatewayProvider).restorePurchases();
+      if (restored) {
+        ref.invalidate(profileNotifierProvider);
+      }
+      state = AsyncData(
+        SubscriptionState(
+          offerings: offerings,
+          message: restored
+              ? 'VIP purchases restored.'
+              : 'No active VIP purchase was found.',
+        ),
+      );
+    } catch (error) {
+      state = AsyncData(
+        SubscriptionState(
+          offerings: offerings,
           error: error.toString(),
         ),
       );
