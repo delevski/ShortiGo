@@ -17,12 +17,16 @@ Version: 0.1.0+2
   physical-device cold-start integration test passed.
 - iOS 17.2 runtime/platform registration was repaired on 2026-06-04. Xcode now
   lists the generic physical iOS destination and all iOS 17.2 simulator
-  destinations. A fresh production no-codesign release build is compiling.
+  destinations. A fresh production no-codesign release build progressed into
+  native dependency compilation without repeating the platform error, then was
+  stopped after more than three hours of clean Firebase/gRPC compilation.
 - Android release AAB: passed on 2026-06-04. `flutter build appbundle --release --dart-define=ENV=prod` produced `build/app/outputs/bundle/release/app-release.aab` (62.0MB).
 - Android release AAB with `dart_defines.prod.json`: passed on 2026-06-04 and
   produced `build/app/outputs/bundle/release/app-release.aab` (62.0MB).
 - Android release signing: local upload keystore and ignored `android/key.properties` are configured. Signed AAB build passed on 2026-06-02.
 - Local iOS build environment uses Homebrew `ruby@3.1`, CocoaPods 1.16.2, Firebase Apple SDK 11.11.0, and Google Mobile Ads SDK 11.2.0 for Xcode 15.2 compatibility.
+- `flutter doctor -v` passed with no issues on 2026-06-04 after the Xcode
+  runtime and CocoaPods environment repair.
 
 ## Cloud Setup
 
