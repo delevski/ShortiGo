@@ -12,9 +12,9 @@ Version: 0.1.0+2
 - Firestore security rules tests: all 6 passed in the emulator on 2026-06-04.
 - Cloud Functions TypeScript build: passed on 2026-06-04.
 - Integration cold-start test: passed on Android emulator on 2026-06-01.
-- A physical Galaxy device was detected over wireless ADB on 2026-06-04, but
-  the connection stopped responding during app installation. Reconnect by USB
-  or repair wireless debugging before completing the Android manual matrix.
+- Galaxy SM-S942B wireless ADB was repaired on 2026-06-04 using the stable
+  `192.168.1.203:5555` endpoint. ShortiGo installed successfully and the
+  physical-device cold-start integration test passed.
 - iOS release build: an earlier 2026-06-04 build passed and produced
   `build/ios/iphoneos/Runner.app` (94.6MB). The latest verification attempt is
   blocked by the local Xcode 15.2 environment reporting that its iOS 17.2
@@ -89,6 +89,12 @@ Version: 0.1.0+2
 - Provision RevenueCat and Sentry. Firebase Performance is already enabled.
 - Publish a public privacy policy and account-deletion request page. Completed
   on Firebase Hosting; add their URLs to Play Console and App Store Connect.
+- Play Console URL entry is blocked because the developer profile was removed
+  on 2026-06-04 after identity and contact-phone verification failures. Appeals
+  are pending and console changes cannot be published until Google restores the
+  profile.
+- App Store Connect URL entry requires signing in to App Store Connect and
+  creating or opening the ShortiGo app record.
 - Review the disclosed transaction-history retention language with qualified
   legal/privacy counsel before store submission.
 - Configure RevenueCat products, entitlement `vip`, and App Store/Play Store
