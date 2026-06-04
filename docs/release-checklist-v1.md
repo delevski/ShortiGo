@@ -7,13 +7,18 @@ Version: 0.1.0+2
 ## Automated Checks
 
 - Flutter analyze: passed on 2026-06-04 with no issues.
-- Flutter unit/widget tests: all 37 passed on 2026-06-04.
+- Flutter unit/widget tests: all 39 passed on 2026-06-04.
 - Admin Studio build: passed on 2026-06-04 with Vite's Firebase bundle-size warning.
 - Firestore security rules tests: all 6 passed in the emulator on 2026-06-04.
 - Cloud Functions TypeScript build: passed on 2026-06-04.
 - Integration cold-start test: passed on Android emulator on 2026-06-01.
-- iOS release build: passed on 2026-06-04. `flutter build ios --release --no-codesign --dart-define=ENV=prod` produced `build/ios/iphoneos/Runner.app` (94.6MB).
-- Android release AAB: passed on 2026-06-04. `flutter build appbundle --release --dart-define=ENV=prod` produced `build/app/outputs/bundle/release/app-release.aab` (59.1MB).
+- iOS release build: an earlier 2026-06-04 build passed and produced
+  `build/ios/iphoneos/Runner.app` (94.6MB). The latest verification attempt is
+  blocked by the local Xcode 15.2 environment reporting that its iOS 17.2
+  physical-device platform is not installed, even after the iOS 17.2 Simulator
+  runtime was installed. This is a local Xcode platform-registration blocker,
+  not an app compile error.
+- Android release AAB: passed on 2026-06-04. `flutter build appbundle --release --dart-define=ENV=prod` produced `build/app/outputs/bundle/release/app-release.aab` (62.0MB).
 - Android release signing: local upload keystore and ignored `android/key.properties` are configured. Signed AAB build passed on 2026-06-02.
 - Local iOS build environment uses Homebrew `ruby@3.1`, CocoaPods 1.16.2, Firebase Apple SDK 11.11.0, and Google Mobile Ads SDK 11.2.0 for Xcode 15.2 compatibility.
 
