@@ -33,6 +33,9 @@ class AdmobAdGateway implements AdGateway {
     if (!_initialized) {
       await initialize();
     }
+    if (_rewarded != null) {
+      return;
+    }
 
     final completer = Completer<RewardedAd?>();
     await RewardedAd.load(
@@ -41,11 +44,18 @@ class AdmobAdGateway implements AdGateway {
       rewardedAdLoadCallback: RewardedAdLoadCallback(
         onAdLoaded: (ad) {
           _rewarded = ad;
-          completer.complete(ad);
+          if (!completer.isCompleted) {
+            completer.complete(ad);
+          }
         },
-        onAdFailedToLoad: (_) {
+        onAdFailedToLoad: (error) {
           _rewarded = null;
-          completer.complete(null);
+          if (kDebugMode) {
+            debugPrint('Rewarded ad failed to load: $error');
+          }
+          if (!completer.isCompleted) {
+            completer.complete(null);
+          }
         },
       ),
     );
@@ -55,23 +65,42 @@ class AdmobAdGateway implements AdGateway {
 
   @override
   Future<int?> showRewarded() async {
+    if (!_initialized) {
+      await initialize();
+    }
+
+    // Load on demand if nothing is cached so the first tap still shows an ad.
+    if (_rewarded == null) {
+      await preloadRewarded();
+    }
+
     final ad = _rewarded;
     if (ad == null) {
-      await preloadRewarded();
-      return null;
+      throw const AdNotAvailableException(
+        'No ad available right now. Please try again shortly.',
+      );
     }
 
     final completer = Completer<int?>();
     int? reward;
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (_) {
-        completer.complete(reward);
+        if (!completer.isCompleted) {
+          completer.complete(reward);
+        }
         ad.dispose();
         _rewarded = null;
         unawaited(preloadRewarded());
       },
-      onAdFailedToShowFullScreenContent: (_, __) {
-        completer.complete(null);
+      onAdFailedToShowFullScreenContent: (_, error) {
+        if (kDebugMode) {
+          debugPrint('Rewarded ad failed to show: $error');
+        }
+        if (!completer.isCompleted) {
+          completer.completeError(
+            const AdNotAvailableException('Could not show the ad.'),
+          );
+        }
         ad.dispose();
         _rewarded = null;
       },

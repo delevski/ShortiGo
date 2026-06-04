@@ -40,6 +40,10 @@ class RewardsNotifier extends AsyncNotifier<RewardsState> {
     });
     ref.onDispose(() => _userSub?.cancel());
 
+    // Warm up a rewarded ad so the first "Watch" tap can show it instantly.
+    final ad = ref.read(adGatewayProvider);
+    unawaited(ad.initialize().then((_) => ad.preloadRewarded()));
+
     return const RewardsState();
   }
 
@@ -98,6 +102,7 @@ class RewardsNotifier extends AsyncNotifier<RewardsState> {
       RewardsState(user: current?.user, isWatchingAd: true),
     );
 
+    String? errorMessage;
     try {
       final ad = ref.read(adGatewayProvider);
       await ad.initialize();
@@ -111,11 +116,11 @@ class RewardsNotifier extends AsyncNotifier<RewardsState> {
             );
       }
     } catch (error) {
-      state = AsyncData(
-        RewardsState(user: current?.user, error: error.toString()),
-      );
+      errorMessage = error.toString();
     } finally {
-      state = AsyncData(RewardsState(user: state.value?.user));
+      state = AsyncData(
+        RewardsState(user: state.value?.user, error: errorMessage),
+      );
     }
   }
 }
