@@ -16,6 +16,9 @@ import 'data/iap/revenuecat_iap_gateway.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
   env = Env.fromDefines();
   if (env.hasReleaseBlockingIssues) {
     debugPrint(

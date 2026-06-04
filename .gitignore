@@ -24,6 +24,7 @@ coverage/
 *.lcov
 
 # Secrets
+dart_defines.prod.json
 **/.env
 **/.env.*
 !**/.env.example

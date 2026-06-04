@@ -26,6 +26,34 @@ end
 
 require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
 
+# Sync ios/Flutter/AdMob.xcconfig from --dart-define ADMOB_APP_ID_IOS when present.
+def sync_admob_xcconfig
+  require 'base64'
+  default_ios_app_id = 'ca-app-pub-3940256099942544~1458002511'
+  admob_id = default_ios_app_id
+  generated = File.expand_path('Flutter/Generated.xcconfig', __dir__)
+  if File.exist?(generated)
+    File.foreach(generated) do |line|
+      next unless line.start_with?('DART_DEFINES=')
+      defines = line.split('=', 2)[1].strip
+      defines.split(',').each do |encoded|
+        next if encoded.empty?
+        decoded = Base64.decode64(encoded)
+        key, value = decoded.split('=', 2)
+        admob_id = value if key == 'ADMOB_APP_ID_IOS' && !value.to_s.empty?
+      end
+      break
+    end
+  end
+  xcconfig_path = File.expand_path('Flutter/AdMob.xcconfig', __dir__)
+  File.write(
+    xcconfig_path,
+    "// Synced from dart-defines by Podfile\nADMOB_APP_ID_IOS=#{admob_id}\n",
+  )
+end
+
+sync_admob_xcconfig
+
 flutter_ios_podfile_setup
 
 target 'Runner' do

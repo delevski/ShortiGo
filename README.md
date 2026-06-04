@@ -383,6 +383,8 @@ flutter run --dart-define=ENV=prod \
 
 See `lib/core/env/env.dart` for the full list of supported defines and their defaults.
 
+Copy `dart_defines.example.json` for a template. AdMob app IDs are injected into **AndroidManifest** and **iOS Info.plist** from the same `--dart-define` values — see [docs/admob-setup.md](docs/admob-setup.md).
+
 ## Backend setup (Firebase)
 
 Root-level Firebase config is committed for one Spark/free-tier project:

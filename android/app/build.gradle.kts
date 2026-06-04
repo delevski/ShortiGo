@@ -1,4 +1,5 @@
 import java.io.FileInputStream
+import java.util.Base64
 import java.util.Properties
 
 plugins {
@@ -17,6 +18,21 @@ val keystorePropertiesFile = rootProject.file("key.properties")
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
+
+// Google AdMob test app ID; override with --dart-define=ADMOB_APP_ID_ANDROID=...
+val defaultAdMobAppId = "ca-app-pub-3940256099942544~3347511713"
+val dartDefines = mutableMapOf<String, String>()
+if (project.hasProperty("dart-defines")) {
+    val encodedDefines = project.property("dart-defines") as String
+    encodedDefines.split(",").filter { it.isNotEmpty() }.forEach { encoded ->
+        val decoded = String(Base64.getDecoder().decode(encoded))
+        val parts = decoded.split("=", limit = 2)
+        if (parts.size == 2) {
+            dartDefines[parts[0]] = parts[1]
+        }
+    }
+}
+val admobAppId = dartDefines["ADMOB_APP_ID_ANDROID"] ?: defaultAdMobAppId
 
 android {
     namespace = "com.shortigo.shortigo"
@@ -41,6 +57,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["admobAppId"] = admobAppId
     }
 
     signingConfigs {
