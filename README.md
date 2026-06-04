@@ -497,8 +497,9 @@ as-is**. Concrete blockers, roughly in priority order:
 - [x] Firebase Auth providers are enabled for Email/Password and Google.
 - [x] Studio provider RBAC, audit events, and provider-scoped catalog access are
       implemented and deployed.
-- [ ] RevenueCat, Sentry, and AdMob accounts/keys are not wired yet; defaults are empty
-      or Google test IDs.
+- [x] Production AdMob app and rewarded-ad IDs are configured locally in the
+      ignored production defines file.
+- [ ] RevenueCat and Sentry accounts/keys are not wired yet.
 
 **Build toolchain**
 
@@ -521,6 +522,15 @@ as-is**. Concrete blockers, roughly in priority order:
 - [ ] The manual device matrix in `docs/release-checklist-v1.md` is entirely unchecked
       (cold-start timing, 50-swipe jank test, sign-in flows, ad reward, daily check-in,
       VIP grant, airplane-mode error states, crash-free rate ≥ 99.5%).
+
+**Store and legal**
+
+- [x] Public privacy policy is deployed at
+      `https://shortigo-prod.web.app/privacy`.
+- [x] Public account-deletion instructions are deployed at
+      `https://shortigo-prod.web.app/account-deletion`.
+- [ ] Add both URLs to Play Console and App Store Connect and complete legal
+      review before submission.
 
 See `docs/release-checklist-v1.md` for the full pre-submission list.
 

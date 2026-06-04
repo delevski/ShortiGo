@@ -6,6 +6,7 @@
 .pub-cache/
 .pub/
 build/
+.firebase/
 **/node_modules/
 **/generated_plugin_registrant.*
 **/Pods/

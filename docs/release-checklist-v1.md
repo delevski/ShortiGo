@@ -12,6 +12,9 @@ Version: 0.1.0+2
 - Firestore security rules tests: all 6 passed in the emulator on 2026-06-04.
 - Cloud Functions TypeScript build: passed on 2026-06-04.
 - Integration cold-start test: passed on Android emulator on 2026-06-01.
+- A physical Galaxy device was detected over wireless ADB on 2026-06-04, but
+  the connection stopped responding during app installation. Reconnect by USB
+  or repair wireless debugging before completing the Android manual matrix.
 - iOS release build: an earlier 2026-06-04 build passed and produced
   `build/ios/iphoneos/Runner.app` (94.6MB). The latest verification attempt is
   blocked by the local Xcode 15.2 environment reporting that its iOS 17.2
@@ -19,6 +22,8 @@ Version: 0.1.0+2
   runtime was installed. This is a local Xcode platform-registration blocker,
   not an app compile error.
 - Android release AAB: passed on 2026-06-04. `flutter build appbundle --release --dart-define=ENV=prod` produced `build/app/outputs/bundle/release/app-release.aab` (62.0MB).
+- Android release AAB with `dart_defines.prod.json`: passed on 2026-06-04 and
+  produced `build/app/outputs/bundle/release/app-release.aab` (62.0MB).
 - Android release signing: local upload keystore and ignored `android/key.properties` are configured. Signed AAB build passed on 2026-06-02.
 - Local iOS build environment uses Homebrew `ruby@3.1`, CocoaPods 1.16.2, Firebase Apple SDK 11.11.0, and Google Mobile Ads SDK 11.2.0 for Xcode 15.2 compatibility.
 
@@ -49,6 +54,10 @@ Version: 0.1.0+2
   new uploads can stay on the Spark/free Firebase setup.
 - Identity Toolkit/Auth API is enabled for `shortigo-prod`; Email/Password and Google providers are configured.
 - Demo seed data was written to `shortigo-prod` on 2026-06-02.
+- Firebase Hosting is configured and deployed on the Spark plan.
+- Public privacy policy: `https://shortigo-prod.web.app/privacy`.
+- Public account-deletion instructions:
+  `https://shortigo-prod.web.app/account-deletion`.
 
 ## Manual Device Matrix
 
@@ -75,9 +84,11 @@ Version: 0.1.0+2
 - Keep Firebase on the Spark plan; do not enable billing.
 - Delete the unused `shortigo-dev` Firebase project. Completed on 2026-06-02.
 - Configure Firebase Auth providers in the console. Completed for Email/Password and Google on 2026-06-02.
-- Provision AdMob, RevenueCat, Sentry, and Firebase Performance.
-- Publish a public privacy policy and account-deletion request page, then add
-  their URLs to Play Console and App Store Connect.
+- AdMob production app and rewarded-ad IDs are configured locally in the
+  ignored `dart_defines.prod.json`.
+- Provision RevenueCat and Sentry. Firebase Performance is already enabled.
+- Publish a public privacy policy and account-deletion request page. Completed
+  on Firebase Hosting; add their URLs to Play Console and App Store Connect.
 - Review the disclosed transaction-history retention language with qualified
   legal/privacy counsel before store submission.
 - Configure RevenueCat products, entitlement `vip`, and App Store/Play Store
@@ -92,4 +103,6 @@ Version: 0.1.0+2
 - Archive the iOS app in Xcode with the production Apple team and upload to App Store Connect.
 - Repair the local macOS/Xcode FSEvents state before the next iOS archive:
   free disk space, restart macOS, launch Xcode once, install requested
-  components, and rerun `xcrun xcodebuild -checkFirstLaunchStatus`.
+  components, and rerun `xcrun xcodebuild -checkFirstLaunchStatus`. The iOS
+  17.2 runtime image is downloaded, but installation currently fails because
+  the disk is almost full.
