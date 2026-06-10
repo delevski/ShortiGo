@@ -15,7 +15,11 @@ import {
 } from "./cloudinaryDelete";
 import { episodeAppLabel } from "./episodeMeta";
 import { logInfo } from "./logger";
+import { invalidateSeriesEpisodeCache } from "./episodeSeriesCache";
+import { applyEpisodeDeleteStats } from "./seriesStats";
 import { getSeriesMeta, syncSeriesStats } from "./seriesFirestore";
+
+export { syncSeriesStats } from "./seriesFirestore";
 
 export type CatalogEpisode = {
   id: string;
@@ -27,6 +31,7 @@ export type CatalogEpisode = {
   thumbnailUrl: string;
   displayName: string;
   isVipLocked: boolean;
+  bonusUnlockCost: number | null;
 };
 
 export type CatalogSeriesGroup = {
@@ -113,6 +118,8 @@ export async function fetchCatalog(
         typeof data.thumbnailUrl === "string" ? data.thumbnailUrl : "",
       displayName: `${seriesTitle} · ${episodeAppLabel(order)}`,
       isVipLocked: data.isVipLocked === true,
+      bonusUnlockCost:
+        typeof data.bonusUnlockCost === "number" ? data.bonusUnlockCost : null,
     });
   }
 
@@ -178,9 +185,13 @@ export async function deleteEpisodeFromCatalog(
 
   await deleteDoc(doc(db, "episodes", episode.id));
   logInfo("Deleted episode from Firestore", { episodeId: episode.id });
+  invalidateSeriesEpisodeCache(episode.seriesId);
 
   const meta = await getSeriesMeta(episode.seriesId);
-  const stats = await syncSeriesStats(episode.seriesId, meta);
+  const stats = await applyEpisodeDeleteStats(episode.seriesId, meta, {
+    count: 1,
+    totalDurationSec: episode.durationSec,
+  });
   let seriesRemoved = false;
   if (stats.episodeCount === 0) {
     await deleteDoc(doc(db, "series", episode.seriesId));
@@ -216,7 +227,10 @@ export async function deleteEpisodesFromCatalog(
   }
 
   const failed: BulkDeleteResult["failed"] = [];
-  const seriesToSync = new Set<string>();
+  const removedBySeries = new Map<
+    string,
+    { count: number; totalDurationSec: number; seriesTitle: string }
+  >();
   const deletedEpisodes: BulkDeleteResult["deletedEpisodes"] = [];
   const total = episodes.length;
 
@@ -230,7 +244,15 @@ export async function deleteEpisodesFromCatalog(
       );
       await deleteCloudinaryAssets(assets);
       await deleteDoc(doc(db, "episodes", episode.id));
-      seriesToSync.add(episode.seriesId);
+      invalidateSeriesEpisodeCache(episode.seriesId);
+      const bucket = removedBySeries.get(episode.seriesId) ?? {
+        count: 0,
+        totalDurationSec: 0,
+        seriesTitle: episode.seriesTitle,
+      };
+      bucket.count += 1;
+      bucket.totalDurationSec += episode.durationSec;
+      removedBySeries.set(episode.seriesId, bucket);
       deletedEpisodes.push({
         id: episode.id,
         displayName: episode.displayName,
@@ -247,10 +269,13 @@ export async function deleteEpisodesFromCatalog(
   }
 
   const removedSeries: BulkDeleteResult["removedSeries"] = [];
-  for (const seriesId of seriesToSync) {
+  for (const [seriesId, removed] of removedBySeries) {
     try {
       const meta = await getSeriesMeta(seriesId);
-      const stats = await syncSeriesStats(seriesId, meta);
+      const stats = await applyEpisodeDeleteStats(seriesId, meta, {
+        count: removed.count,
+        totalDurationSec: removed.totalDurationSec,
+      });
       if (stats.episodeCount === 0) {
         await deleteDoc(doc(db, "series", seriesId));
         await removeSeriesFromFeatured(seriesId);
@@ -290,6 +315,7 @@ export async function deleteSeriesFromCatalog(
     await deleteCloudinaryAssets(assets);
     await deleteDoc(doc(db, "episodes", episode.id));
   }
+  invalidateSeriesEpisodeCache(seriesId);
 
   await deleteDoc(doc(db, "series", seriesId));
   await removeSeriesFromFeatured(seriesId);

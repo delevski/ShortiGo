@@ -23,7 +23,8 @@ export { formatFileSize } from "./format";
 
 /** Valid for video delivery — g_auto cannot share a component with c_fill (Cloudinary 400). */
 const VIDEO_TRANSFORMS = "c_fill,ar_9:16,q_auto";
-const THUMB_TRANSFORMS = "so_1,c_fill,ar_9:16,g_auto";
+/** First frame of the video (so_0), cropped to 9:16 for episode thumbs & series covers. */
+const THUMB_TRANSFORMS = "so_0,c_fill,ar_9:16,g_auto";
 
 export function cloudinaryConfigError(): string | null {
   if (!import.meta.env.VITE_CLOUDINARY_CLOUD_NAME) {

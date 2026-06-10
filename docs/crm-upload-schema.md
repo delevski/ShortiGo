@@ -21,6 +21,8 @@ Optional (CRM provider ownership — mobile app ignores extra fields):
 
 - `providerId` (string) — set on create; immutable
 - `createdByUid` (string) — Firebase Auth UID; immutable
+- `cloudinaryVideoPublicId` (string) — Cloudinary public id for indexed duplicate checks; immutable after create
+- `cloudinaryThumbPublicId` (string) — optional thumbnail public id; immutable after create
 
 Example:
 

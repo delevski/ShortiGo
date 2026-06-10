@@ -9,6 +9,12 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import {
+  getCachedSeriesEpisodes,
+  invalidateSeriesEpisodeCache,
+  setCachedSeriesEpisodes,
+} from "./episodeSeriesCache";
+import type { PublishedEpisodeRow } from "./firestoreEpisodes";
 
 export type SeriesMeta = {
   title: string;
@@ -16,6 +22,26 @@ export type SeriesMeta = {
   category: string;
   isVip: boolean;
 };
+
+/** New series: first episode frame. Existing series: keep cover unless user overrides. */
+export function resolveSeriesCoverUrl(input: {
+  manualCover: string;
+  episodeThumbnailUrl: string;
+  isNewSeries: boolean;
+  episodeOrder: number;
+  existingCoverUrl?: string | null;
+}): string {
+  if (input.manualCover.trim()) {
+    return input.manualCover.trim();
+  }
+  if (input.isNewSeries && input.episodeOrder === 1) {
+    return input.episodeThumbnailUrl;
+  }
+  if (input.existingCoverUrl?.trim()) {
+    return input.existingCoverUrl.trim();
+  }
+  return input.episodeThumbnailUrl;
+}
 
 export type ContentOwnership = {
   providerId: string | null;
@@ -38,23 +64,52 @@ export type SeriesRecord = SeriesMeta & {
   isPublished: boolean;
 };
 
+async function loadSeriesEpisodesForOrder(
+  seriesId: string,
+): Promise<PublishedEpisodeRow[]> {
+  if (!db) {
+    return [];
+  }
+  const key = seriesId.trim();
+  const cached = getCachedSeriesEpisodes(key);
+  if (cached) {
+    return cached;
+  }
+  const snap = await getDocs(
+    query(collection(db, "episodes"), where("seriesId", "==", key)),
+  );
+  const rows: PublishedEpisodeRow[] = snap.docs.map((item) => {
+    const data = item.data();
+    return {
+      id: item.id,
+      order: typeof data.order === "number" ? data.order : 0,
+      durationSec:
+        typeof data.durationSec === "number" ? data.durationSec : 0,
+      videoUrl: typeof data.videoUrl === "string" ? data.videoUrl : "",
+      thumbnailUrl:
+        typeof data.thumbnailUrl === "string" ? data.thumbnailUrl : "",
+    };
+  });
+  rows.sort((a, b) => a.order - b.order);
+  setCachedSeriesEpisodes(key, rows);
+  return rows;
+}
+
 export async function fetchNextEpisodeOrder(seriesId: string): Promise<number> {
   if (!db || !seriesId.trim()) {
     return 1;
   }
-  const snap = await getDocs(
-    query(collection(db, "episodes"), where("seriesId", "==", seriesId.trim())),
-  );
+  const rows = await loadSeriesEpisodesForOrder(seriesId);
   let maxOrder = 0;
-  for (const item of snap.docs) {
-    const order = item.data().order;
-    if (typeof order === "number" && order > maxOrder) {
-      maxOrder = order;
+  for (const row of rows) {
+    if (row.order > maxOrder) {
+      maxOrder = row.order;
     }
   }
   return maxOrder + 1;
 }
 
+/** Full re-scan of episodes — use for repair / health checks, not every publish. */
 export async function syncSeriesStats(
   seriesId: string,
   meta: SeriesMeta,
@@ -63,6 +118,7 @@ export async function syncSeriesStats(
     return { episodeCount: 0, totalDurationSec: 0 };
   }
 
+  invalidateSeriesEpisodeCache(seriesId);
   const snap = await getDocs(
     query(collection(db, "episodes"), where("seriesId", "==", seriesId)),
   );
@@ -192,30 +248,6 @@ export async function getSeriesOwnership(
     return null;
   }
   return { providerId, createdByUid };
-}
-
-export async function fetchAllSeries(): Promise<SeriesRecord[]> {
-  if (!db) {
-    return [];
-  }
-  const snap = await getDocs(collection(db, "series"));
-  const rows: SeriesRecord[] = snap.docs.map((item) => {
-    const data = item.data();
-    return {
-      id: item.id,
-      title: typeof data.title === "string" ? data.title : item.id,
-      coverUrl: typeof data.coverUrl === "string" ? data.coverUrl : "",
-      category: typeof data.category === "string" ? data.category : "new",
-      isVip: data.isVip === true,
-      episodeCount:
-        typeof data.episodeCount === "number" ? data.episodeCount : 0,
-      totalDurationSec:
-        typeof data.totalDurationSec === "number" ? data.totalDurationSec : 0,
-      isPublished: data.isPublished !== false,
-    };
-  });
-  rows.sort((a, b) => a.title.localeCompare(b.title));
-  return rows;
 }
 
 export async function getSeriesMeta(seriesId: string): Promise<SeriesMeta> {

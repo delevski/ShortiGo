@@ -69,6 +69,15 @@ service cloud.firestore {
           || request.resource.data.createdByUid == resource.data.createdByUid);
     }
 
+    function cloudinaryIdsUnchanged() {
+      return (!('cloudinaryVideoPublicId' in resource.data)
+          || request.resource.data.cloudinaryVideoPublicId
+            == resource.data.cloudinaryVideoPublicId)
+        && (!('cloudinaryThumbPublicId' in resource.data)
+          || request.resource.data.cloudinaryThumbPublicId
+            == resource.data.cloudinaryThumbPublicId);
+    }
+
     function providerOwnsResource() {
       return resource.data.providerId == userProviderId();
     }
@@ -132,7 +141,8 @@ service cloud.firestore {
       return isProvider()
         && resourceHasProviderOwnership()
         && providerOwnsResource()
-        && ownershipFieldsUnchanged();
+        && ownershipFieldsUnchanged()
+        && cloudinaryIdsUnchanged();
     }
 
     function validMobileUserCreate(uid) {
@@ -148,15 +158,30 @@ service cloud.firestore {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       let oldBonus = resource.data.get('bonus', 0);
       let newBonus = request.resource.data.get('bonus', 0);
+      let oldUnlocked = resource.data.get('unlockedEpisodeIds', []);
+      let newUnlocked = request.resource.data.get('unlockedEpisodeIds', []);
       return changed.hasOnly([
           'favoriteSeriesIds',
           'lastDailyCheckIn',
-          'bonus'
+          'bonus',
+          'unlockedEpisodeIds'
         ])
         && oldBonus is int
         && newBonus is int
-        && newBonus >= oldBonus
-        && newBonus - oldBonus <= 12;
+        && (
+          (
+            newBonus >= oldBonus
+            && newBonus - oldBonus <= 12
+          )
+          || (
+            newBonus >= 0
+            && newBonus < oldBonus
+            && oldUnlocked is list
+            && newUnlocked is list
+            && newUnlocked.hasAll(oldUnlocked)
+            && newUnlocked.size() == oldUnlocked.size() + 1
+          )
+        );
     }
 
     match /series/{id} {
@@ -198,9 +223,17 @@ service cloud.firestore {
         && request.resource.data.userId == uid
         && request.resource.data.coinsDelta == 0
         && request.resource.data.bonusDelta is int
-        && request.resource.data.bonusDelta > 0
-        && request.resource.data.bonusDelta <= 12
-        && request.resource.data.type in ['adReward', 'dailyCheckIn'];
+        && (
+          (
+            request.resource.data.bonusDelta > 0
+            && request.resource.data.bonusDelta <= 12
+            && request.resource.data.type in ['adReward', 'dailyCheckIn']
+          )
+          || (
+            request.resource.data.bonusDelta < 0
+            && request.resource.data.type == 'spend'
+          )
+        );
       allow update, delete: if false;
     }
 
@@ -241,7 +274,9 @@ service cloud.firestore {
     }
 
     match /auditEvents/{eventId} {
-      allow read: if isSuperAdmin();
+      allow read: if isSuperAdmin()
+        || (isProvider()
+          && resource.data.get('providerId', '') == userProviderId());
       allow create: if canWriteAudit() && validAuditCreate();
       allow update, delete: if false;
     }

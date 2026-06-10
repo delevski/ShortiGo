@@ -13,8 +13,14 @@ abstract class Episode with _$Episode {
     required String thumbnailUrl,
     required int durationSec,
     @Default(false) bool isVipLocked,
+    int? bonusUnlockCost,
   }) = _Episode;
 
   factory Episode.fromJson(Map<String, dynamic> json) =>
       _$EpisodeFromJson(json);
+}
+
+extension EpisodeAccess on Episode {
+  bool get canUnlockWithBonus =>
+      !isVipLocked && bonusUnlockCost != null && bonusUnlockCost! > 0;
 }

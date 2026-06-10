@@ -14,6 +14,7 @@ _Episode _$EpisodeFromJson(Map<String, dynamic> json) => _Episode(
       thumbnailUrl: json['thumbnailUrl'] as String,
       durationSec: (json['durationSec'] as num).toInt(),
       isVipLocked: json['isVipLocked'] as bool? ?? false,
+      bonusUnlockCost: (json['bonusUnlockCost'] as num?)?.toInt(),
     );
 
 Map<String, dynamic> _$EpisodeToJson(_Episode instance) => <String, dynamic>{
@@ -24,4 +25,5 @@ Map<String, dynamic> _$EpisodeToJson(_Episode instance) => <String, dynamic>{
       'thumbnailUrl': instance.thumbnailUrl,
       'durationSec': instance.durationSec,
       'isVipLocked': instance.isVipLocked,
+      'bonusUnlockCost': instance.bonusUnlockCost,
     };

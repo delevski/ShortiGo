@@ -11,8 +11,24 @@ void main() {
       thumbnailUrl: 'https://x/t.jpg',
       durationSec: 60,
       isVipLocked: false,
+      bonusUnlockCost: 60,
     );
 
     expect(Episode.fromJson(episode.toJson()), equals(episode));
+  });
+
+  test('VIP episodes cannot also be bonus unlockable', () {
+    const episode = Episode(
+      id: 'e1',
+      seriesId: 's1',
+      order: 1,
+      videoUrl: 'https://x/v.mp4',
+      thumbnailUrl: 'https://x/t.jpg',
+      durationSec: 60,
+      isVipLocked: true,
+      bonusUnlockCost: 60,
+    );
+
+    expect(episode.canUnlockWithBonus, isFalse);
   });
 }

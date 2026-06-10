@@ -39,6 +39,9 @@ void main() {
     when(() => authUser.uid).thenReturn(appUser.id);
     when(adGateway.initialize).thenAnswer((_) async {});
     when(adGateway.preloadRewarded).thenAnswer((_) async {});
+    when(() => adGateway.status)
+        .thenAnswer((_) => Stream.value(const AdStatus.loading()));
+    when(() => adGateway.currentStatus).thenReturn(const AdStatus.loading());
     when(() => userRepository.watch(appUser.id))
         .thenAnswer((_) => Stream.value(appUser));
   });
@@ -105,5 +108,22 @@ void main() {
         reference: any(named: 'reference'),
       ),
     ).called(1);
+  });
+
+  test('exposes rewarded-ad readiness to the rewards screen', () async {
+    when(() => adGateway.status).thenAnswer(
+      (_) => Stream.value(const AdStatus.ready(isTestAd: true)),
+    );
+    when(() => adGateway.currentStatus)
+        .thenReturn(const AdStatus.ready(isTestAd: true));
+    final container = buildContainer();
+    addTearDown(container.dispose);
+    await container.read(currentAuthUserProvider.future);
+    await container.read(rewardsNotifierProvider.future);
+    await Future<void>.delayed(Duration.zero);
+
+    final state = container.read(rewardsNotifierProvider).requireValue;
+    expect(state.adStatus.phase, AdPhase.ready);
+    expect(state.adStatus.isTestAd, isTrue);
   });
 }

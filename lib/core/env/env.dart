@@ -13,6 +13,7 @@ class Env {
     required this.adMobRewardedUnitIdAndroid,
     required this.revenueCatApiKeyIos,
     required this.revenueCatApiKeyAndroid,
+    required this.rewardApiBaseUrl,
   });
 
   final AppFlavor flavor;
@@ -24,6 +25,7 @@ class Env {
   final String adMobRewardedUnitIdAndroid;
   final String revenueCatApiKeyIos;
   final String revenueCatApiKeyAndroid;
+  final String rewardApiBaseUrl;
 
   bool get isProd => flavor == AppFlavor.prod;
 
@@ -47,6 +49,7 @@ class Env {
     String adMobRewardedUnitIdAndroid = _googleTestRewardedUnitIdAndroid,
     String revenueCatApiKeyIos = '',
     String revenueCatApiKeyAndroid = '',
+    String rewardApiBaseUrl = '',
   }) {
     return Env._(
       flavor: flavor,
@@ -58,6 +61,7 @@ class Env {
       adMobRewardedUnitIdAndroid: adMobRewardedUnitIdAndroid,
       revenueCatApiKeyIos: revenueCatApiKeyIos,
       revenueCatApiKeyAndroid: revenueCatApiKeyAndroid,
+      rewardApiBaseUrl: rewardApiBaseUrl,
     );
   }
 
@@ -97,6 +101,9 @@ class Env {
     }
     if (revenueCatApiKeyAndroid.isEmpty) {
       issues.add('RC_API_KEY_ANDROID is empty.');
+    }
+    if (rewardApiBaseUrl.isEmpty) {
+      issues.add('REWARD_API_BASE_URL is empty.');
     }
     return issues;
   }
@@ -140,6 +147,10 @@ class Env {
       ),
       revenueCatApiKeyAndroid: const String.fromEnvironment(
         'RC_API_KEY_ANDROID',
+        defaultValue: '',
+      ),
+      rewardApiBaseUrl: const String.fromEnvironment(
+        'REWARD_API_BASE_URL',
         defaultValue: '',
       ),
     );

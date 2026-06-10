@@ -21,6 +21,7 @@ mixin _$Episode {
   String get thumbnailUrl;
   int get durationSec;
   bool get isVipLocked;
+  int? get bonusUnlockCost;
 
   /// Create a copy of Episode
   /// with the given fields replaced by the non-null parameter values.
@@ -48,17 +49,19 @@ mixin _$Episode {
             (identical(other.durationSec, durationSec) ||
                 other.durationSec == durationSec) &&
             (identical(other.isVipLocked, isVipLocked) ||
-                other.isVipLocked == isVipLocked));
+                other.isVipLocked == isVipLocked) &&
+            (identical(other.bonusUnlockCost, bonusUnlockCost) ||
+                other.bonusUnlockCost == bonusUnlockCost));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, seriesId, order, videoUrl,
-      thumbnailUrl, durationSec, isVipLocked);
+      thumbnailUrl, durationSec, isVipLocked, bonusUnlockCost);
 
   @override
   String toString() {
-    return 'Episode(id: $id, seriesId: $seriesId, order: $order, videoUrl: $videoUrl, thumbnailUrl: $thumbnailUrl, durationSec: $durationSec, isVipLocked: $isVipLocked)';
+    return 'Episode(id: $id, seriesId: $seriesId, order: $order, videoUrl: $videoUrl, thumbnailUrl: $thumbnailUrl, durationSec: $durationSec, isVipLocked: $isVipLocked, bonusUnlockCost: $bonusUnlockCost)';
   }
 }
 
@@ -74,7 +77,8 @@ abstract mixin class $EpisodeCopyWith<$Res> {
       String videoUrl,
       String thumbnailUrl,
       int durationSec,
-      bool isVipLocked});
+      bool isVipLocked,
+      int? bonusUnlockCost});
 }
 
 /// @nodoc
@@ -96,6 +100,7 @@ class _$EpisodeCopyWithImpl<$Res> implements $EpisodeCopyWith<$Res> {
     Object? thumbnailUrl = null,
     Object? durationSec = null,
     Object? isVipLocked = null,
+    Object? bonusUnlockCost = freezed,
   }) {
     return _then(_self.copyWith(
       id: null == id
@@ -126,6 +131,10 @@ class _$EpisodeCopyWithImpl<$Res> implements $EpisodeCopyWith<$Res> {
           ? _self.isVipLocked
           : isVipLocked // ignore: cast_nullable_to_non_nullable
               as bool,
+      bonusUnlockCost: freezed == bonusUnlockCost
+          ? _self.bonusUnlockCost
+          : bonusUnlockCost // ignore: cast_nullable_to_non_nullable
+              as int?,
     ));
   }
 }
@@ -223,16 +232,30 @@ extension EpisodePatterns on Episode {
 
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>(
-    TResult Function(String id, String seriesId, int order, String videoUrl,
-            String thumbnailUrl, int durationSec, bool isVipLocked)?
+    TResult Function(
+            String id,
+            String seriesId,
+            int order,
+            String videoUrl,
+            String thumbnailUrl,
+            int durationSec,
+            bool isVipLocked,
+            int? bonusUnlockCost)?
         $default, {
     required TResult orElse(),
   }) {
     final _that = this;
     switch (_that) {
       case _Episode() when $default != null:
-        return $default(_that.id, _that.seriesId, _that.order, _that.videoUrl,
-            _that.thumbnailUrl, _that.durationSec, _that.isVipLocked);
+        return $default(
+            _that.id,
+            _that.seriesId,
+            _that.order,
+            _that.videoUrl,
+            _that.thumbnailUrl,
+            _that.durationSec,
+            _that.isVipLocked,
+            _that.bonusUnlockCost);
       case _:
         return orElse();
     }
@@ -253,15 +276,29 @@ extension EpisodePatterns on Episode {
 
   @optionalTypeArgs
   TResult when<TResult extends Object?>(
-    TResult Function(String id, String seriesId, int order, String videoUrl,
-            String thumbnailUrl, int durationSec, bool isVipLocked)
+    TResult Function(
+            String id,
+            String seriesId,
+            int order,
+            String videoUrl,
+            String thumbnailUrl,
+            int durationSec,
+            bool isVipLocked,
+            int? bonusUnlockCost)
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _Episode():
-        return $default(_that.id, _that.seriesId, _that.order, _that.videoUrl,
-            _that.thumbnailUrl, _that.durationSec, _that.isVipLocked);
+        return $default(
+            _that.id,
+            _that.seriesId,
+            _that.order,
+            _that.videoUrl,
+            _that.thumbnailUrl,
+            _that.durationSec,
+            _that.isVipLocked,
+            _that.bonusUnlockCost);
       case _:
         throw StateError('Unexpected subclass');
     }
@@ -281,15 +318,29 @@ extension EpisodePatterns on Episode {
 
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>(
-    TResult? Function(String id, String seriesId, int order, String videoUrl,
-            String thumbnailUrl, int durationSec, bool isVipLocked)?
+    TResult? Function(
+            String id,
+            String seriesId,
+            int order,
+            String videoUrl,
+            String thumbnailUrl,
+            int durationSec,
+            bool isVipLocked,
+            int? bonusUnlockCost)?
         $default,
   ) {
     final _that = this;
     switch (_that) {
       case _Episode() when $default != null:
-        return $default(_that.id, _that.seriesId, _that.order, _that.videoUrl,
-            _that.thumbnailUrl, _that.durationSec, _that.isVipLocked);
+        return $default(
+            _that.id,
+            _that.seriesId,
+            _that.order,
+            _that.videoUrl,
+            _that.thumbnailUrl,
+            _that.durationSec,
+            _that.isVipLocked,
+            _that.bonusUnlockCost);
       case _:
         return null;
     }
@@ -306,7 +357,8 @@ class _Episode implements Episode {
       required this.videoUrl,
       required this.thumbnailUrl,
       required this.durationSec,
-      this.isVipLocked = false});
+      this.isVipLocked = false,
+      this.bonusUnlockCost});
   factory _Episode.fromJson(Map<String, dynamic> json) =>
       _$EpisodeFromJson(json);
 
@@ -325,6 +377,8 @@ class _Episode implements Episode {
   @override
   @JsonKey()
   final bool isVipLocked;
+  @override
+  final int? bonusUnlockCost;
 
   /// Create a copy of Episode
   /// with the given fields replaced by the non-null parameter values.
@@ -357,17 +411,19 @@ class _Episode implements Episode {
             (identical(other.durationSec, durationSec) ||
                 other.durationSec == durationSec) &&
             (identical(other.isVipLocked, isVipLocked) ||
-                other.isVipLocked == isVipLocked));
+                other.isVipLocked == isVipLocked) &&
+            (identical(other.bonusUnlockCost, bonusUnlockCost) ||
+                other.bonusUnlockCost == bonusUnlockCost));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, seriesId, order, videoUrl,
-      thumbnailUrl, durationSec, isVipLocked);
+      thumbnailUrl, durationSec, isVipLocked, bonusUnlockCost);
 
   @override
   String toString() {
-    return 'Episode(id: $id, seriesId: $seriesId, order: $order, videoUrl: $videoUrl, thumbnailUrl: $thumbnailUrl, durationSec: $durationSec, isVipLocked: $isVipLocked)';
+    return 'Episode(id: $id, seriesId: $seriesId, order: $order, videoUrl: $videoUrl, thumbnailUrl: $thumbnailUrl, durationSec: $durationSec, isVipLocked: $isVipLocked, bonusUnlockCost: $bonusUnlockCost)';
   }
 }
 
@@ -384,7 +440,8 @@ abstract mixin class _$EpisodeCopyWith<$Res> implements $EpisodeCopyWith<$Res> {
       String videoUrl,
       String thumbnailUrl,
       int durationSec,
-      bool isVipLocked});
+      bool isVipLocked,
+      int? bonusUnlockCost});
 }
 
 /// @nodoc
@@ -406,6 +463,7 @@ class __$EpisodeCopyWithImpl<$Res> implements _$EpisodeCopyWith<$Res> {
     Object? thumbnailUrl = null,
     Object? durationSec = null,
     Object? isVipLocked = null,
+    Object? bonusUnlockCost = freezed,
   }) {
     return _then(_Episode(
       id: null == id
@@ -436,6 +494,10 @@ class __$EpisodeCopyWithImpl<$Res> implements _$EpisodeCopyWith<$Res> {
           ? _self.isVipLocked
           : isVipLocked // ignore: cast_nullable_to_non_nullable
               as bool,
+      bonusUnlockCost: freezed == bonusUnlockCost
+          ? _self.bonusUnlockCost
+          : bonusUnlockCost // ignore: cast_nullable_to_non_nullable
+              as int?,
     ));
   }
 }

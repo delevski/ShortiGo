@@ -5,15 +5,16 @@ import 'package:better_player_plus/better_player_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
 import '../../../core/error/friendly_error.dart';
 import '../../../core/providers.dart';
 import '../../../domain/entities/episode.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
+import '../../episode_player/presentation/episode_player_view.dart';
 import '../application/shorts_feed_notifier.dart';
 import '../application/video_pre_cache_manager.dart';
+import 'shorts_info_panel.dart';
+import 'shorts_video_progress_bar.dart';
 import 'video_card.dart';
 
 class ShortsPage extends ConsumerStatefulWidget {
@@ -23,7 +24,8 @@ class ShortsPage extends ConsumerStatefulWidget {
   ConsumerState<ShortsPage> createState() => _ShortsPageState();
 }
 
-class _ShortsPageState extends ConsumerState<ShortsPage> {
+class _ShortsPageState extends ConsumerState<ShortsPage>
+    with WidgetsBindingObserver {
   final _pageController = PageController();
   final _preCache = VideoPreCacheManager();
   final _urlCache = <String, Future<String>>{};
@@ -37,10 +39,13 @@ class _ShortsPageState extends ConsumerState<ShortsPage> {
   bool _hasError = false;
   bool _playerMounted = false;
   String? _attachedEpisodeId;
+  double _playbackProgress = 0;
+  bool _panelCollapsed = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _playerController = BetterPlayerController(
       const BetterPlayerConfiguration(
         autoPlay: false,
@@ -59,17 +64,53 @@ class _ShortsPageState extends ConsumerState<ShortsPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _playerMounted = false;
     _playerController.dispose(forceDispose: true);
     _pageController.dispose();
     super.dispose();
   }
 
-  void _onPlayerEvent(BetterPlayerEvent event) {
-    if (event.betterPlayerEventType == BetterPlayerEventType.exception &&
-        mounted) {
-      setState(() => _hasError = true);
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (shouldPauseVideoForLifecycle(state)) {
+      unawaited(_safePause());
     }
+  }
+
+  void _onPlayerEvent(BetterPlayerEvent event) {
+    if (!mounted) {
+      return;
+    }
+
+    switch (event.betterPlayerEventType) {
+      case BetterPlayerEventType.exception:
+        setState(() => _hasError = true);
+      case BetterPlayerEventType.progress:
+      case BetterPlayerEventType.finished:
+        final next = _progressFromEvent(event);
+        if (next != null && (next - _playbackProgress).abs() > 0.001) {
+          setState(() => _playbackProgress = next);
+        }
+      default:
+        break;
+    }
+  }
+
+  double? _progressFromEvent(BetterPlayerEvent event) {
+    if (event.betterPlayerEventType == BetterPlayerEventType.finished) {
+      return 1;
+    }
+
+    final position = event.parameters?['progress'] as Duration?;
+    final duration = event.parameters?['duration'] as Duration?;
+    if (position == null ||
+        duration == null ||
+        duration.inMilliseconds <= 0) {
+      return null;
+    }
+
+    return position.inMilliseconds / duration.inMilliseconds;
   }
 
   @override
@@ -105,45 +146,117 @@ class _ShortsPageState extends ConsumerState<ShortsPage> {
             });
           }
 
-          return PageView.builder(
-            controller: _pageController,
-            scrollDirection: Axis.vertical,
-            itemCount: state.episodes.length,
-            onPageChanged: (index) => _onPageChanged(index, state.episodes),
-            itemBuilder: (_, index) {
-              final episode = state.episodes[index];
-              final isActive = index == _current;
-              final showPlayer = isActive && _playerMounted;
+          final activeEpisode = state.episodes[_current];
+          final series = state.seriesById[activeEpisode.seriesId];
 
-              return Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (showPlayer)
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: BetterPlayer(
-                          key: ValueKey(
-                            _attachedEpisodeId ?? 'shorts_player',
+          return Stack(
+            children: [
+              PageView.builder(
+                controller: _pageController,
+                scrollDirection: Axis.vertical,
+                itemCount: state.episodes.length,
+                onPageChanged: (index) =>
+                    _onPageChanged(index, state.episodes),
+                itemBuilder: (_, index) {
+                  final episode = state.episodes[index];
+                  final isActive = index == _current;
+                  final showPlayer = isActive && _playerMounted;
+
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (showPlayer)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                // Force the video surface to match the full
+                                // viewport so it fills edge-to-edge instead of
+                                // letterboxing to a fixed 9:16 box.
+                                if (constraints.maxHeight > 0) {
+                                  _playerController.setOverriddenAspectRatio(
+                                    constraints.maxWidth /
+                                        constraints.maxHeight,
+                                  );
+                                }
+                                return BetterPlayer(
+                                  key: ValueKey(
+                                    _attachedEpisodeId ?? 'shorts_player',
+                                  ),
+                                  controller: _playerController,
+                                );
+                              },
+                            ),
                           ),
-                          controller: _playerController,
+                        ),
+                      VideoCard(
+                        key: ValueKey('chrome_${episode.id}'),
+                        episode: episode,
+                        isActive: isActive,
+                        isLoading: isActive && _isLoading,
+                        hasError: isActive && _hasError,
+                        onRetry: () => unawaited(
+                          _playEpisodeAt(_current, state.episodes),
                         ),
                       ),
-                    ),
-                  VideoCard(
-                    key: ValueKey('chrome_${episode.id}'),
-                    episode: episode,
-                    isActive: isActive,
-                    isLoading: isActive && _isLoading,
-                    hasError: isActive && _hasError,
-                    onRetry: () => unawaited(
-                      _playEpisodeAt(_current, state.episodes),
-                    ),
-                    onTapSeries: () =>
-                        context.push('/series/${episode.seriesId}'),
+                    ],
+                  );
+                },
+              ),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: ShortsVideoProgressBar(
+                  progress: _playbackProgress,
+                  visible: _playerMounted && !_isLoading && !_hasError,
+                ),
+              ),
+              if (series != null)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 420),
+                    reverseDuration: const Duration(milliseconds: 360),
+                    transitionBuilder: (child, animation) {
+                      return ShortsPanelReveal(
+                        animation: animation,
+                        child: child,
+                      );
+                    },
+                    layoutBuilder: (currentChild, previousChildren) {
+                      return Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          ...previousChildren,
+                          if (currentChild != null) currentChild,
+                        ],
+                      );
+                    },
+                    child: _panelCollapsed
+                        ? Align(
+                            key: const ValueKey('shorts_info_fab'),
+                            alignment: Alignment.bottomRight,
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(0, 0, 16, 12),
+                              child: SeriesInfoFab(
+                                onExpand: () =>
+                                    setState(() => _panelCollapsed = false),
+                              ),
+                            ),
+                          )
+                        : ShortsInfoPanel(
+                            key: ValueKey('shorts_info_${series.id}'),
+                            series: series,
+                            episode: activeEpisode,
+                            onCollapse: () =>
+                                setState(() => _panelCollapsed = true),
+                          ),
                   ),
-                ],
-              );
-            },
+                ),
+            ],
           );
         },
       ),
@@ -156,6 +269,7 @@ class _ShortsPageState extends ConsumerState<ShortsPage> {
       _keepIds = _preCache.keepIdsFor(currentIndex: index, episodes: episodes);
       _isLoading = true;
       _hasError = false;
+      _playbackProgress = 0;
     });
     _prefetchUrls(episodes);
     unawaited(_playEpisodeAt(index, episodes));
@@ -174,6 +288,7 @@ class _ShortsPageState extends ConsumerState<ShortsPage> {
         _isLoading = true;
         _hasError = false;
         _playerMounted = true;
+        _playbackProgress = 0;
       });
       await _waitEndOfFrame();
       if (!mounted || generation != _playGeneration) {
@@ -183,6 +298,7 @@ class _ShortsPageState extends ConsumerState<ShortsPage> {
       setState(() {
         _isLoading = true;
         _hasError = false;
+        _playbackProgress = 0;
       });
     }
 
