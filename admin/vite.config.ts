@@ -13,7 +13,10 @@ const cloudinaryUploadProxy = {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
+  const base =
+    process.env.GITHUB_PAGES === "true" ? "/ShortiGo/" : "/";
   return {
+    base,
     plugins: [react(), cloudinaryAdminApi(env)],
     server: { proxy: cloudinaryUploadProxy },
     preview: { proxy: cloudinaryUploadProxy },

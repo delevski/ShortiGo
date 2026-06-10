@@ -23,6 +23,29 @@ npm run dev
 
 Open: http://localhost:5173/
 
+## GitHub Pages (production CRM)
+
+The admin app can be hosted as a static site at:
+
+**https://delevski.github.io/ShortiGo/**
+
+### One-time setup
+
+1. In GitHub → **Settings → Secrets and variables → Actions**, add:
+   - `VITE_FIREBASE_API_KEY`
+   - `VITE_FIREBASE_AUTH_DOMAIN`
+   - `VITE_FIREBASE_PROJECT_ID`
+   - `VITE_FIREBASE_APP_ID`
+   - `VITE_CLOUDINARY_CLOUD_NAME`
+   - `VITE_CLOUDINARY_UPLOAD_PRESET`
+2. Firebase Console → **Authentication → Settings → Authorized domains** → add `delevski.github.io`.
+3. Cloudinary Console → **Settings → Security → Allowed fetch domains** → add `https://delevski.github.io`.
+4. GitHub → **Settings → Pages** → **Source: GitHub Actions**.
+
+Pushes to `main` that touch `admin/` trigger deploy. Or run **Actions → Deploy Admin to GitHub Pages → Run workflow** manually.
+
+**Limits on Pages:** Cloudinary **upload + publish** work (direct upload, no dev proxy). **Media library delete** does not — there is no server for `/api/cloudinary/delete` on static hosting. Use local `npm run dev` for deletes.
+
 ## Media library
 
 Use the **Media library** tab to see all published episodes (thumbnail grid grouped by series).
