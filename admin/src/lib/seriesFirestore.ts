@@ -18,6 +18,7 @@ import type { PublishedEpisodeRow } from "./firestoreEpisodes";
 
 export type SeriesMeta = {
   title: string;
+  description: string;
   coverUrl: string;
   category: string;
   isVip: boolean;
@@ -51,6 +52,7 @@ export type ContentOwnership = {
 export type SeriesOption = {
   id: string;
   title: string;
+  description: string;
   coverUrl: string;
   category: string;
   isVip: boolean;
@@ -137,6 +139,7 @@ export async function syncSeriesStats(
   const fields = {
     id: seriesId,
     title: meta.title,
+    description: meta.description,
     coverUrl: meta.coverUrl,
     category: meta.category,
     isVip: meta.isVip,
@@ -148,7 +151,6 @@ export async function syncSeriesStats(
   if (!existing.exists()) {
     await setDoc(seriesRef, {
       ...fields,
-      description: "",
       createdAt: serverTimestamp(),
       popularity: 0,
     });
@@ -172,6 +174,7 @@ export async function ensureSeriesDoc(
   const baseFields: Record<string, unknown> = {
     id: seriesId,
     title: meta.title,
+    description: meta.description,
     coverUrl: meta.coverUrl,
     category: meta.category,
     isVip: meta.isVip,
@@ -184,7 +187,6 @@ export async function ensureSeriesDoc(
 
   const createPayload: Record<string, unknown> = {
     ...baseFields,
-    description: "",
     createdAt: serverTimestamp(),
     popularity: 0,
     episodeCount: 0,
@@ -218,6 +220,8 @@ export async function fetchSeriesOptions(
     return {
       id: item.id,
       title: typeof data.title === "string" ? data.title : item.id,
+      description:
+        typeof data.description === "string" ? data.description : "",
       coverUrl: typeof data.coverUrl === "string" ? data.coverUrl : "",
       category: typeof data.category === "string" ? data.category : "new",
       isVip: data.isVip === true,
@@ -254,6 +258,7 @@ export async function getSeriesMeta(seriesId: string): Promise<SeriesMeta> {
   if (!db) {
     return {
       title: seriesId,
+      description: "",
       coverUrl: "",
       category: "new",
       isVip: false,
@@ -263,6 +268,7 @@ export async function getSeriesMeta(seriesId: string): Promise<SeriesMeta> {
   if (!snap.exists()) {
     return {
       title: seriesId,
+      description: "",
       coverUrl: "",
       category: "new",
       isVip: false,
@@ -271,6 +277,8 @@ export async function getSeriesMeta(seriesId: string): Promise<SeriesMeta> {
   const data = snap.data();
   return {
     title: typeof data.title === "string" ? data.title : seriesId,
+    description:
+      typeof data.description === "string" ? data.description : "",
     coverUrl: typeof data.coverUrl === "string" ? data.coverUrl : "",
     category: typeof data.category === "string" ? data.category : "new",
     isVip: data.isVip === true,

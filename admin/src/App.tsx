@@ -142,6 +142,7 @@ export function App() {
   const [isVipLocked, setIsVipLocked] = useState(false);
   const [bonusUnlockCost, setBonusUnlockCost] = useState(60);
   const [seriesTitle, setSeriesTitle] = useState("");
+  const [seriesDescription, setSeriesDescription] = useState("");
   const [seriesCoverUrl, setSeriesCoverUrl] = useState("");
   const [seriesCategory, setSeriesCategory] = useState("new");
   const [seriesIsVip, setSeriesIsVip] = useState(false);
@@ -225,6 +226,7 @@ export function App() {
     setSelectedSeriesId(option.id);
     setSeriesId(option.id);
     setSeriesTitle(option.title);
+    setSeriesDescription(option.description);
     setSeriesCoverUrl(option.coverUrl);
     setSeriesCategory(option.category);
     setSeriesIsVip(option.isVip);
@@ -405,6 +407,7 @@ export function App() {
     setDurationSec(0);
     if (!keepSeries) {
       setSeriesTitle("");
+      setSeriesDescription("");
       setSeriesCoverUrl("");
       setSeriesCategory("new");
       setSeriesIsVip(false);
@@ -475,6 +478,7 @@ export function App() {
     const episodeRef = doc(db, "episodes", episodeId);
     const seriesMeta: SeriesMeta = {
       title: safeSeriesTitle,
+      description: seriesDescription.trim(),
       coverUrl: safeCoverUrl,
       category: seriesCategory,
       isVip: seriesIsVip || isVipLocked,
@@ -1178,6 +1182,21 @@ export function App() {
               </p>
             </div>
           )}
+
+          <div className="field">
+            <span className="field__label">Description</span>
+            <textarea
+              className="field__textarea"
+              value={seriesDescription}
+              onChange={(e) => setSeriesDescription(e.target.value)}
+              placeholder="Short blurb shown in the app when users watch this series…"
+              rows={4}
+            />
+            <p className="hint">
+              Appears under the series title in the mobile app (Shorts info panel
+              and series detail). You can edit this when publishing any episode.
+            </p>
+          </div>
 
           <div className="field-row">
             <div className="field">

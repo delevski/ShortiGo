@@ -175,7 +175,8 @@ input[type="text"],
 input[type="url"],
 input[type="number"],
 input:not([type]),
-select {
+select,
+textarea {
   width: 100%;
   background: var(--bg-input);
   border: 1px solid var(--border);
@@ -186,8 +187,16 @@ select {
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
+.field__textarea {
+  min-height: 96px;
+  resize: vertical;
+  line-height: 1.45;
+  font-family: inherit;
+}
+
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   outline: none;
   border-color: var(--border-focus);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);

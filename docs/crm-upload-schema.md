@@ -46,7 +46,7 @@ Document ID:
 Required fields for mobile discovery:
 - `id` (string) - same value as document ID
 - `title` (string)
-- `description` (string)
+- `description` (string) - shown in Shorts info panel and series detail
 - `coverUrl` (string)
 - `category` (string) - one of `new`, `hot`, `adventure`, `scary`, `anime`, `vip`
 - `isVip` (boolean)

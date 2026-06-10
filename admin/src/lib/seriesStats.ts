@@ -38,6 +38,7 @@ async function writeSeriesStatsFields(
   const fields = {
     id: seriesId,
     title: meta.title,
+    description: meta.description,
     coverUrl: meta.coverUrl,
     category: meta.category,
     isVip: meta.isVip,
@@ -48,7 +49,6 @@ async function writeSeriesStatsFields(
   if (!existing.exists()) {
     await setDoc(seriesRef, {
       ...fields,
-      description: "",
       createdAt: serverTimestamp(),
       popularity: 0,
     });
