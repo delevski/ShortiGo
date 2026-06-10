@@ -42,6 +42,36 @@ export async function fetchProviders(): Promise<ProviderRecord[]> {
   return rows;
 }
 
+/** Single query for all provider-linked studio users (group in UI by providerId). */
+export async function fetchAllLinkedProviderUsers(): Promise<
+  LinkedStudioUser[]
+> {
+  if (!db) {
+    return [];
+  }
+  const snap = await getDocs(
+    query(collection(db, "adminUsers"), where("role", "==", "provider")),
+  );
+  return snap.docs
+    .map((item) => {
+      const data = item.data();
+      const providerId =
+        typeof data.providerId === "string" ? data.providerId : "";
+      if (!providerId) {
+        return null;
+      }
+      return {
+        uid: item.id,
+        email: typeof data.email === "string" ? data.email : null,
+        displayName:
+          typeof data.displayName === "string" ? data.displayName : null,
+        active: data.active !== false,
+        providerId,
+      };
+    })
+    .filter((row): row is LinkedStudioUser => row !== null);
+}
+
 export async function fetchLinkedUsersForProvider(
   providerId: string,
 ): Promise<LinkedStudioUser[]> {

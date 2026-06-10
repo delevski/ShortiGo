@@ -1,12 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   deleteEpisodeFromCatalog,
   deleteEpisodesFromCatalog,
   deleteSeriesFromCatalog,
-  fetchCatalog,
   type CatalogEpisode,
   type CatalogSeriesGroup,
 } from "../lib/firestoreCatalog";
+import {
+  fetchEpisodesForSeries,
+  fetchEpisodeDerivedSeriesSummaries,
+  fetchSeriesPage,
+  SERIES_PAGE_SIZE,
+  type CatalogSeriesSummary,
+} from "../lib/catalogPagination";
+import type { QueryDocumentSnapshot } from "firebase/firestore";
 import {
   bulkDeleteToastMessage,
   episodeDeleteToastMessage,
@@ -68,7 +75,17 @@ export function MediaLibrary({
   }
   const toast = useToast();
   const { confirm } = useConfirm();
-  const [groups, setGroups] = useState<CatalogSeriesGroup[]>([]);
+  const [seriesList, setSeriesList] = useState<CatalogSeriesSummary[]>([]);
+  const [episodesBySeries, setEpisodesBySeries] = useState<
+    Record<string, CatalogEpisode[]>
+  >({});
+  const [loadingEpisodes, setLoadingEpisodes] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const lastSeriesDocRef = useRef<QueryDocumentSnapshot | null>(null);
+  const [hasMoreSeries, setHasMoreSeries] = useState(false);
+  const [loadingMoreSeries, setLoadingMoreSeries] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [deleteOverlay, setDeleteOverlay] = useState<DeleteOverlayState | null>(
@@ -80,47 +97,125 @@ export function MediaLibrary({
 
   const busy = deleting || deleteOverlay !== null;
 
-  const load = useCallback(async () => {
-    if (!userReady) {
-      setGroups([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const catalog = await fetchCatalog(scopeProviderId);
-      setGroups(catalog);
-      setExpanded((prev) => {
-        const next = { ...prev };
-        for (const g of catalog) {
-          if (next[g.seriesId] === undefined) {
-            next[g.seriesId] = true;
+  const loadSeries = useCallback(
+    async (append = false) => {
+      if (!userReady) {
+        setSeriesList([]);
+        setEpisodesBySeries({});
+        setLoading(false);
+        return;
+      }
+      if (append) {
+        setLoadingMoreSeries(true);
+      } else {
+        setLoading(true);
+      }
+      try {
+        if (!append) {
+          lastSeriesDocRef.current = null;
+        }
+        const page = await fetchSeriesPage({
+          scopeProviderId,
+          startAfterDoc: append ? lastSeriesDocRef.current : null,
+        });
+        let merged = page.series;
+        if (!append && merged.length === 0) {
+          const derived = await fetchEpisodeDerivedSeriesSummaries(
+            scopeProviderId,
+          );
+          merged = derived.slice(0, SERIES_PAGE_SIZE);
+        } else if (!append && merged.length > 0) {
+          const known = new Set(merged.map((s) => s.seriesId));
+          const derived = await fetchEpisodeDerivedSeriesSummaries(
+            scopeProviderId,
+            known,
+          );
+          if (derived.length > 0) {
+            merged = [...merged, ...derived].sort((a, b) =>
+              a.seriesTitle.localeCompare(b.seriesTitle),
+            );
           }
         }
-        return next;
-      });
-      setSelectedIds((prev) => {
-        const valid = new Set(catalog.flatMap((g) => g.episodes.map((e) => e.id)));
-        return new Set([...prev].filter((id) => valid.has(id)));
-      });
-    } catch (error) {
-      logError("Failed to load media library", error);
-      toast.error("Library load failed", String(error));
-    } finally {
-      setLoading(false);
-    }
-  }, [toast, userReady, scopeProviderId]);
+        setSeriesList((prev) =>
+          append ? [...prev, ...merged] : merged,
+        );
+        lastSeriesDocRef.current = page.lastDoc;
+        setHasMoreSeries(page.hasMore);
+        if (!append) {
+          setEpisodesBySeries({});
+          setExpanded(
+            Object.fromEntries(merged.map((s) => [s.seriesId, true])),
+          );
+          setSelectedIds(new Set());
+        }
+        setLastRefresh(new Date());
+      } catch (error) {
+        logError("Failed to load media library", error);
+        toast.error("Library load failed", String(error));
+      } finally {
+        setLoading(false);
+        setLoadingMoreSeries(false);
+      }
+    },
+    [toast, userReady, scopeProviderId],
+  );
+
+  const load = useCallback(() => loadSeries(false), [loadSeries]);
+
+  const ensureEpisodesLoaded = useCallback(
+    async (summary: CatalogSeriesSummary): Promise<CatalogEpisode[]> => {
+      const cached = episodesBySeries[summary.seriesId];
+      if (cached) {
+        return cached;
+      }
+      setLoadingEpisodes((prev) => new Set(prev).add(summary.seriesId));
+      try {
+        const episodes = await fetchEpisodesForSeries(
+          summary.seriesId,
+          summary.seriesTitle,
+        );
+        setEpisodesBySeries((prev) => ({
+          ...prev,
+          [summary.seriesId]: episodes,
+        }));
+        return episodes;
+      } finally {
+        setLoadingEpisodes((prev) => {
+          const next = new Set(prev);
+          next.delete(summary.seriesId);
+          return next;
+        });
+      }
+    },
+    [episodesBySeries],
+  );
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  useEffect(() => {
+    for (const summary of seriesList) {
+      if (expanded[summary.seriesId] && !episodesBySeries[summary.seriesId]) {
+        void ensureEpisodesLoaded(summary);
+      }
+    }
+  }, [seriesList, expanded, episodesBySeries, ensureEpisodesLoaded]);
+
   const filteredGroups = useMemo(() => {
     const q = filter.trim().toLowerCase();
+    const allGroups: CatalogSeriesGroup[] = seriesList.map((summary) => ({
+      seriesId: summary.seriesId,
+      seriesTitle: summary.seriesTitle,
+      coverUrl: summary.coverUrl,
+      category: summary.category,
+      episodeCount: summary.episodeCount,
+      episodes: episodesBySeries[summary.seriesId] ?? [],
+    }));
     if (!q) {
-      return groups;
+      return allGroups;
     }
-    return groups
+    return allGroups
       .map((group) => {
         const seriesMatch =
           group.seriesTitle.toLowerCase().includes(q) ||
@@ -140,7 +235,7 @@ export function MediaLibrary({
         return { ...group, episodes };
       })
       .filter((g): g is CatalogSeriesGroup => g !== null);
-  }, [filter, groups]);
+  }, [filter, seriesList, episodesBySeries]);
 
   const visibleEpisodes = useMemo(
     () => filteredGroups.flatMap((group) => group.episodes),
@@ -149,13 +244,13 @@ export function MediaLibrary({
 
   const episodeById = useMemo(() => {
     const map = new Map<string, CatalogEpisode>();
-    for (const group of groups) {
-      for (const episode of group.episodes) {
+    for (const episodes of Object.values(episodesBySeries)) {
+      for (const episode of episodes) {
         map.set(episode.id, episode);
       }
     }
     return map;
-  }, [groups]);
+  }, [episodesBySeries]);
 
   const selectedCount = selectedIds.size;
   const allVisibleSelected =
@@ -163,8 +258,8 @@ export function MediaLibrary({
     visibleEpisodes.every((ep) => selectedIds.has(ep.id));
 
   const totalEpisodes = useMemo(
-    () => groups.reduce((n, g) => n + g.episodes.length, 0),
-    [groups],
+    () => seriesList.reduce((n, s) => n + s.episodeCount, 0),
+    [seriesList],
   );
 
   function showDeleteOverlay(state: DeleteOverlayState) {
@@ -368,10 +463,30 @@ export function MediaLibrary({
 
       await load();
 
-      for (const ep of episodes) {
-        if (result.deletedEpisodes.some((d) => d.id === ep.id)) {
-          await logMediaDelete(ep.id, ep.seriesId, { bulk: true });
-        }
+      if (result.deleted > 0 && actorUid && studioAccess) {
+        await writeAuditEvent({
+          action: "media.delete",
+          actorUid,
+          actorEmail,
+          role: studioAccess.role,
+          providerId: studioAccess.providerId,
+          targetType: "episode",
+          targetId: "bulk",
+          metadata: {
+            bulk: true,
+            count: result.deleted,
+            episodeIds: result.deletedEpisodes.map((d) => d.id),
+            seriesIds: [
+              ...new Set(
+                episodes
+                  .filter((ep) =>
+                    result.deletedEpisodes.some((d) => d.id === ep.id),
+                  )
+                  .map((ep) => ep.seriesId),
+              ),
+            ],
+          },
+        });
       }
 
       const toastPayload = bulkDeleteToastMessage(result);
@@ -393,12 +508,25 @@ export function MediaLibrary({
   }
 
   async function confirmDeleteSeries(group: CatalogSeriesGroup) {
+    const episodes =
+      group.episodes.length > 0
+        ? group.episodes
+        : await ensureEpisodesLoaded({
+            seriesId: group.seriesId,
+            seriesTitle: group.seriesTitle,
+            coverUrl: group.coverUrl,
+            category: group.category,
+            episodeCount: group.episodeCount,
+            providerId: null,
+          });
+    const groupWithEpisodes = { ...group, episodes };
+
     const ok = await confirm({
       title: "Delete entire series?",
       message: `Remove "${group.seriesTitle}" and all its episodes from the app and Cloudinary.`,
       details: [
         `Series ID: ${group.seriesId}`,
-        `${group.episodes.length} episode(s) will be deleted`,
+        `${groupWithEpisodes.episodes.length} episode(s) will be deleted`,
         "Removed from For You if featured",
       ],
       confirmLabel: "Delete series",
@@ -411,12 +539,12 @@ export function MediaLibrary({
     setDeleting(true);
     showDeleteOverlay({
       title: "Deleting series",
-      subtitle: `${group.seriesTitle} · ${group.episodes.length} episode(s)`,
+      subtitle: `${group.seriesTitle} · ${groupWithEpisodes.episodes.length} episode(s)`,
       percent: 0,
       indeterminate: true,
       steps: [
         {
-          label: `Episodes (${group.episodes.length})`,
+          label: `Episodes (${groupWithEpisodes.episodes.length})`,
           done: false,
           active: true,
         },
@@ -427,9 +555,9 @@ export function MediaLibrary({
 
     try {
       const result = await deleteSeriesFromCatalog(
-        group.seriesId,
-        group.episodes,
-        group.seriesTitle,
+        groupWithEpisodes.seriesId,
+        groupWithEpisodes.episodes,
+        groupWithEpisodes.seriesTitle,
       );
       if (actorUid && studioAccess && studioAccess.role !== "none") {
         await writeAuditEvent({
@@ -490,8 +618,10 @@ export function MediaLibrary({
           <div>
             <h2 className="section-title">Media library</h2>
             <p className="hint">
-              Select multiple episodes to delete from Firestore and Cloudinary
-              together.
+              Series load in pages of {SERIES_PAGE_SIZE}. Episodes load when you
+              expand a series (expanded by default). Search filters loaded
+              series only.
+              {lastRefresh ? ` Last refresh ${lastRefresh.toLocaleTimeString()}.` : ""}
             </p>
           </div>
           <button
@@ -559,7 +689,7 @@ export function MediaLibrary({
         <p className="hint">
           {loading
             ? "Loading…"
-            : `${filteredGroups.length} series · ${totalEpisodes} episode(s) total`}
+            : `${filteredGroups.length} series shown · ${totalEpisodes} episode(s) in loaded pages`}
         </p>
       </section>
 
@@ -569,7 +699,12 @@ export function MediaLibrary({
         </section>
       ) : filteredGroups.length === 0 ? (
         <section className="card">
-          <p className="hint">No published episodes match your search.</p>
+          <p className="hint">
+            No series in this page yet. If you published before, click Refresh
+            or check Firestore rules/indexes (browser console may show{" "}
+            <code>permission-denied</code> or <code>failed-precondition</code>
+            ).
+          </p>
         </section>
       ) : (
         filteredGroups.map((group) => {
@@ -605,12 +740,21 @@ export function MediaLibrary({
                 <button
                   type="button"
                   className="library-series__toggle"
-                  onClick={() =>
+                  onClick={() => {
+                    const willExpand = !expanded[group.seriesId];
                     setExpanded((prev) => ({
                       ...prev,
-                      [group.seriesId]: !prev[group.seriesId],
-                    }))
-                  }
+                      [group.seriesId]: willExpand,
+                    }));
+                    if (willExpand) {
+                      const summary = seriesList.find(
+                        (s) => s.seriesId === group.seriesId,
+                      );
+                      if (summary) {
+                        void ensureEpisodesLoaded(summary);
+                      }
+                    }
+                  }}
                 >
                   <span className="library-series__chevron">
                     {expanded[group.seriesId] ? "▼" : "▶"}
@@ -637,6 +781,10 @@ export function MediaLibrary({
 
               {expanded[group.seriesId] && (
                 <div className="library-grid">
+                  {loadingEpisodes.has(group.seriesId) &&
+                  group.episodes.length === 0 ? (
+                    <p className="hint">Loading episodes…</p>
+                  ) : null}
                   {group.episodes.map((episode) => {
                     const media = normalizeCloudinaryEpisodeUrls(
                       episode.videoUrl,
@@ -681,7 +829,11 @@ export function MediaLibrary({
                           </p>
                           <p className="library-card__sub">
                             {episode.durationSec}s
-                            {episode.isVipLocked ? " · VIP" : ""}
+                            {episode.isVipLocked
+                              ? " · VIP"
+                              : episode.bonusUnlockCost
+                                ? ` · ${episode.bonusUnlockCost} bonus`
+                                : ""}
                           </p>
                           {cloudinaryPublicIdFromUrl(episode.videoUrl) && (
                             <p className="library-card__cloud">
@@ -708,6 +860,19 @@ export function MediaLibrary({
           );
         })
       )}
+
+      {!loading && hasMoreSeries ? (
+        <section className="card">
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={loadingMoreSeries || busy}
+            onClick={() => void loadSeries(true)}
+          >
+            {loadingMoreSeries ? "Loading…" : "Load more series"}
+          </button>
+        </section>
+      ) : null}
     </div>
   );
 }

@@ -1,17 +1,21 @@
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/error/friendly_error.dart';
+import '../../../core/providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../domain/entities/transaction.dart';
+import '../../../domain/entities/user.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
 import '../../subscription/application/subscription_notifier.dart';
 import '../application/account_deletion_notifier.dart';
 import '../application/profile_notifier.dart';
 import 'account_actions_section.dart';
+import 'transaction_presentation.dart';
 
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
@@ -36,6 +40,9 @@ class ProfilePage extends ConsumerWidget {
           }
 
           final initial = _initialFor(user.displayName ?? user.email);
+          final rewardsEarned = state.transactions
+              .where((transaction) => transaction.bonusDelta > 0)
+              .fold<int>(0, (sum, transaction) => sum + transaction.bonusDelta);
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -74,6 +81,8 @@ class ProfilePage extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 24),
+              _ViewerStatus(user: user),
+              const SizedBox(height: 16),
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -91,9 +100,37 @@ class ProfilePage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _SnapshotCell(
+                      icon: Icons.bookmark,
+                      value: '${user.favoriteSeriesIds.length}',
+                      label: 'Saved',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _SnapshotCell(
+                      icon: Icons.bolt,
+                      value: '$rewardsEarned',
+                      label: 'Earned',
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _SnapshotCell(
+                      icon: Icons.lock_open,
+                      value: '${user.unlockedEpisodeIds.length}',
+                      label: 'Unlocked',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
               if (state.transactions.isNotEmpty) ...[
                 const Text(
-                  'Recent transactions',
+                  'Recent activity',
                   style: TextStyle(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 8),
@@ -104,13 +141,22 @@ class ProfilePage extends ConsumerWidget {
                           _iconFor(transaction.type),
                           color: AppColors.primary,
                         ),
-                        title: Text(transaction.type.name),
+                        title: Text(transaction.friendlyTitle),
                         trailing: Text(
-                          '+${transaction.coinsDelta}c / '
-                          '+${transaction.bonusDelta}b',
+                          transaction.walletDeltaLabel,
+                          style: TextStyle(
+                            color: transaction.bonusDelta < 0 ||
+                                    transaction.coinsDelta < 0
+                                ? AppColors.textSecondary
+                                : AppColors.success,
+                          ),
                         ),
                       ),
                     ),
+              ],
+              if (kDebugMode) ...[
+                const SizedBox(height: 24),
+                const _AdDiagnostics(),
               ],
               if (!user.isVip) ...[
                 const SizedBox(height: 16),
@@ -174,6 +220,129 @@ class ProfilePage extends ConsumerWidget {
       TxType.spend => Icons.remove_circle,
       TxType.refund => Icons.undo,
     };
+  }
+}
+
+class _ViewerStatus extends StatelessWidget {
+  const _ViewerStatus({required this.user});
+
+  final AppUser user;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: user.isVip
+            ? AppColors.vipGold.withValues(alpha: 0.12)
+            : AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: user.isVip ? AppColors.vipGold : AppColors.divider,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            user.isVip ? Icons.workspace_premium : Icons.play_circle_outline,
+            color: user.isVip ? AppColors.vipGold : AppColors.primaryLight,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(user.isVip ? 'VIP viewer' : 'Free viewer'),
+                Text(
+                  user.isVip
+                      ? 'Every VIP episode is open'
+                      : 'Earn bonus to unlock selected episodes',
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SnapshotCell extends StatelessWidget {
+  const _SnapshotCell({
+    required this.icon,
+    required this.value,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 20, color: AppColors.primaryLight),
+          const SizedBox(height: 6),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
+          Text(label, style: const TextStyle(color: AppColors.textSecondary)),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdDiagnostics extends ConsumerWidget {
+  const _AdDiagnostics();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final gateway = ref.watch(adGatewayProvider);
+    final status =
+        ref.watch(adStatusProvider).valueOrNull ?? gateway.currentStatus;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Ad diagnostics'),
+            const SizedBox(height: 6),
+            Text(
+              '${status.phase.name}${status.isTestAd ? ' · test mode' : ''}',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            if (status.message != null) ...[
+              const SizedBox(height: 4),
+              Text(status.message!),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => gateway.preloadRewarded(),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry'),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: () => gateway.openAdInspector(),
+                  icon: const Icon(Icons.troubleshoot),
+                  label: const Text('Inspector'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

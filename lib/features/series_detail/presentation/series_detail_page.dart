@@ -1,16 +1,15 @@
-import 'dart:async';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/providers.dart';
 import '../../../core/error/friendly_error.dart';
+import '../../../core/providers.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../domain/entities/user.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
+import '../../../shared/widgets/save_series_button.dart';
+import '../../episode_player/application/episode_access.dart';
 import '../application/series_detail_notifier.dart';
 
 class SeriesDetailPage extends ConsumerWidget {
@@ -31,6 +30,7 @@ class SeriesDetailPage extends ConsumerWidget {
         ),
         data: (state) {
           final series = state.series;
+          final user = ref.watch(currentAppUserDocProvider).value;
           if (series == null) {
             return const Center(child: Text('Series not found'));
           }
@@ -88,7 +88,7 @@ class SeriesDetailPage extends ConsumerWidget {
                         const SizedBox(height: 8),
                         Text(series.description),
                         const SizedBox(height: 16),
-                        _SaveSeriesButton(seriesId: series.id),
+                        SaveSeriesFilledButton(seriesId: series.id),
                       ],
                     ),
                   ),
@@ -112,11 +112,30 @@ class SeriesDetailPage extends ConsumerWidget {
                       ),
                       title: Text('EP.${episode.order}'),
                       subtitle: Text('${episode.durationSec}s'),
-                      trailing: episode.isVipLocked
-                          ? const Icon(Icons.lock, color: AppColors.vipGold)
-                          : const Icon(Icons.play_circle_outline),
+                      trailing: switch (accessFor(episode, user)) {
+                        EpisodeAccessState.vipRequired =>
+                          const Icon(Icons.lock, color: AppColors.vipGold),
+                        EpisodeAccessState.bonusRequired => Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.bolt,
+                                size: 18,
+                                color: AppColors.vipGold,
+                              ),
+                              Text(
+                                '${episode.bonusUnlockCost}',
+                                style:
+                                    const TextStyle(color: AppColors.vipGold),
+                              ),
+                            ],
+                          ),
+                        EpisodeAccessState.open =>
+                          const Icon(Icons.play_circle_outline),
+                      },
                       onTap: () {
-                        if (episode.isVipLocked) {
+                        if (accessFor(episode, user) ==
+                            EpisodeAccessState.vipRequired) {
                           context.push('/subscribe');
                           return;
                         }
@@ -131,42 +150,5 @@ class SeriesDetailPage extends ConsumerWidget {
         },
       ),
     );
-  }
-}
-
-class _SaveSeriesButton extends ConsumerWidget {
-  const _SaveSeriesButton({required this.seriesId});
-
-  final String seriesId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentAppUserDocProvider).value;
-    final isSaved = user?.favoriteSeriesIds.contains(seriesId) ?? false;
-
-    return FilledButton.icon(
-      onPressed: () => _toggleSaved(context, ref, user, isSaved),
-      icon: Icon(isSaved ? Icons.bookmark : Icons.bookmark_outline),
-      label: Text(isSaved ? 'Saved' : 'Save'),
-    );
-  }
-
-  Future<void> _toggleSaved(
-    BuildContext context,
-    WidgetRef ref,
-    AppUser? user,
-    bool isSaved,
-  ) async {
-    if (user == null) {
-      unawaited(context.push('/login'));
-      return;
-    }
-
-    final repo = ref.read(userRepositoryProvider);
-    if (isSaved) {
-      await repo.unsaveSeries(userId: user.id, seriesId: seriesId);
-    } else {
-      await repo.saveSeries(userId: user.id, seriesId: seriesId);
-    }
   }
 }

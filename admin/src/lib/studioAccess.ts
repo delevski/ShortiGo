@@ -90,7 +90,7 @@ export async function loadStudioAccess(uid: string): Promise<StudioAccess> {
       canPublish: true,
       canDelete: false,
       canManageProviders: false,
-      canViewAudit: false,
+      canViewAudit: true,
       canWriteFeatured: false,
     };
   }

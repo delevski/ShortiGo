@@ -18,6 +18,7 @@ class ProfileState {
 
 class ProfileNotifier extends AsyncNotifier<ProfileState> {
   StreamSubscription<List<Transaction>>? _txSub;
+  StreamSubscription<AppUser>? _userSub;
 
   @override
   Future<ProfileState> build() async {
@@ -28,16 +29,32 @@ class ProfileNotifier extends AsyncNotifier<ProfileState> {
 
     final userRepo = ref.read(userRepositoryProvider);
     final txRepo = ref.read(transactionRepositoryProvider);
-    final user = await userRepo.byId(auth.uid);
+    final firstUser = Completer<AppUser>();
+    var latestTransactions = const <Transaction>[];
 
+    _userSub = userRepo.watch(auth.uid).listen(
+      (user) {
+        if (!firstUser.isCompleted) {
+          firstUser.complete(user);
+        }
+        state = AsyncData(
+          ProfileState(user: user, transactions: latestTransactions),
+        );
+      },
+      onError: firstUser.completeError,
+    );
     _txSub = txRepo.watchForUser(auth.uid).listen((transactions) {
+      latestTransactions = transactions;
       state = AsyncData(
-        ProfileState(user: user, transactions: transactions),
+        ProfileState(user: state.value?.user, transactions: transactions),
       );
     });
-    ref.onDispose(() => _txSub?.cancel());
+    ref.onDispose(() {
+      _userSub?.cancel();
+      _txSub?.cancel();
+    });
 
-    return ProfileState(user: user);
+    return ProfileState(user: await firstUser.future);
   }
 }
 

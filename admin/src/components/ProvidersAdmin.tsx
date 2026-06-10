@@ -4,7 +4,7 @@ import { writeAuditEvent } from "../lib/auditLog";
 import { logError } from "../lib/logger";
 import {
   createProvider,
-  fetchLinkedUsersForProvider,
+  fetchAllLinkedProviderUsers,
   fetchProviders,
   linkProviderUser,
   setLinkedUserActive,
@@ -37,14 +37,21 @@ export function ProvidersAdmin({ user, studioAccess }: ProvidersAdminProps) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const rows = await fetchProviders();
+      const [rows, allLinked] = await Promise.all([
+        fetchProviders(),
+        fetchAllLinkedProviderUsers(),
+      ]);
       setProviders(rows);
       const linked: Record<string, LinkedStudioUser[]> = {};
-      await Promise.all(
-        rows.map(async (provider) => {
-          linked[provider.id] = await fetchLinkedUsersForProvider(provider.id);
-        }),
-      );
+      for (const provider of rows) {
+        linked[provider.id] = [];
+      }
+      for (const user of allLinked) {
+        if (!linked[user.providerId]) {
+          linked[user.providerId] = [];
+        }
+        linked[user.providerId].push(user);
+      }
       setLinkedByProvider(linked);
     } catch (error) {
       logError("Failed to load providers", error);

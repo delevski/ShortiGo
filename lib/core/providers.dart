@@ -3,18 +3,22 @@ import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'env/env.dart';
 import '../data/ads/admob_ad_gateway.dart';
 import '../data/firestore/episode_repository.dart';
 import '../data/firestore/series_repository.dart';
 import '../data/firestore/transaction_repository.dart';
 import '../data/firestore/user_repository.dart';
 import '../data/iap/revenuecat_iap_gateway.dart';
+import '../data/rewards/firestore_reward_gateway.dart';
 import '../data/local/shortigo_database.dart';
+import '../data/rewards/reward_api_gateway.dart';
 import '../data/storage/firebase_video_source.dart';
 import '../domain/entities/user.dart';
 import '../domain/interfaces/ad_gateway.dart';
 import '../domain/interfaces/episode_repository.dart';
 import '../domain/interfaces/iap_gateway.dart';
+import '../domain/interfaces/reward_gateway.dart';
 import '../domain/interfaces/series_repository.dart';
 import '../domain/interfaces/transaction_repository.dart';
 import '../domain/interfaces/user_repository.dart';
@@ -73,6 +77,23 @@ final videoSourceProvider = Provider<VideoSource>((ref) {
 
 final adGatewayProvider = Provider<AdGateway>((_) {
   return AdmobAdGateway();
+});
+
+final adStatusProvider = StreamProvider<AdStatus>((ref) {
+  return ref.watch(adGatewayProvider).status;
+});
+
+final rewardGatewayProvider = Provider<RewardGateway>((ref) {
+  if (env.rewardApiBaseUrl.isEmpty) {
+    return FirestoreRewardGateway(
+      db: ref.watch(firestoreProvider),
+      userId: ref.watch(firebaseAuthProvider).currentUser?.uid,
+    );
+  }
+  return RewardApiGateway(
+    auth: ref.watch(firebaseAuthProvider),
+    baseUrl: env.rewardApiBaseUrl,
+  );
 });
 
 final iapGatewayProvider = Provider<IapGateway>((_) {

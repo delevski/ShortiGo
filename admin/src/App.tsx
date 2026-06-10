@@ -22,6 +22,8 @@ import {
 } from "firebase/firestore";
 import { auth, db, firebaseConfigError } from "./firebase";
 import { ActivityLog } from "./components/ActivityLog";
+import { CatalogHealth } from "./components/CatalogHealth";
+import { Dashboard } from "./components/Dashboard";
 import { FileDropzone } from "./components/FileDropzone";
 import { MediaLibrary } from "./components/MediaLibrary";
 import { MediaPreview } from "./components/MediaPreview";
@@ -60,16 +62,24 @@ import {
   fetchNextEpisodeOrder,
   fetchSeriesOptions,
   getSeriesOwnership,
-  syncSeriesStats,
+  resolveSeriesCoverUrl,
   type SeriesMeta,
   type SeriesOption,
 } from "./lib/seriesFirestore";
+import { applyEpisodePublishStats } from "./lib/seriesStats";
+import { invalidateSeriesEpisodeCache } from "./lib/episodeSeriesCache";
 
 type StatusVariant = "idle" | "success" | "error" | "info";
 
 type OverlayStep = { label: string; done: boolean; active: boolean };
 
-type AppView = "upload" | "library" | "providers" | "activity";
+type AppView =
+  | "upload"
+  | "library"
+  | "dashboard"
+  | "health"
+  | "providers"
+  | "activity";
 
 function isHttpUrl(value: string): boolean {
   return value.startsWith("http://") || value.startsWith("https://");
@@ -130,6 +140,7 @@ export function App() {
   const [order, setOrder] = useState(1);
   const [durationSec, setDurationSec] = useState(0);
   const [isVipLocked, setIsVipLocked] = useState(false);
+  const [bonusUnlockCost, setBonusUnlockCost] = useState(60);
   const [seriesTitle, setSeriesTitle] = useState("");
   const [seriesCoverUrl, setSeriesCoverUrl] = useState("");
   const [seriesCategory, setSeriesCategory] = useState("new");
@@ -234,22 +245,50 @@ export function App() {
     return onAuthStateChanged(auth, setUser);
   }, []);
 
+  const refreshStudioAccess = useCallback(async () => {
+    if (!user) {
+      setStudioAccess(null);
+      return;
+    }
+    try {
+      const access = await loadStudioAccess(user.uid);
+      setStudioAccess(access);
+      toast.info(
+        "Role refreshed",
+        access.role === "superAdmin"
+          ? "Super admin — full catalog access."
+          : access.role === "provider"
+            ? `Provider · ${access.providerId ?? "unknown org"}`
+            : "No adminUsers access — cannot publish.",
+      );
+    } catch (error) {
+      logError("Studio access check failed", error, { uid: user.uid });
+      setStudioAccess(null);
+      toast.error(
+        "Permission error",
+        `Could not read adminUsers/${user.uid}. ${toUserMessage(error)}`,
+      );
+    }
+  }, [user, toast]);
+
   useEffect(() => {
     if (!user) {
       setStudioAccess(null);
       return;
     }
-    void loadStudioAccess(user.uid)
-      .then(setStudioAccess)
-      .catch((error) => {
-        logError("Studio access check failed", error, { uid: user.uid });
-        setStudioAccess(null);
-        toast.error(
-          "Permission error",
-          `Could not read adminUsers/${user.uid}. ${toUserMessage(error)}`,
-        );
-      });
-  }, [user]);
+    void refreshStudioAccess();
+  }, [user, refreshStudioAccess]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    const onFocus = () => {
+      void refreshStudioAccess();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [user, refreshStudioAccess]);
 
   useEffect(() => {
     if (!user || !studioAccess?.canPublish) {
@@ -295,16 +334,19 @@ export function App() {
       setCloudinaryMatches([]);
       return;
     }
-    const publicId = cloudinaryPublicIdFromUrl(videoUrl);
-    const needle =
-      publicId?.split("/").pop() ?? videoUrl.split("/").pop() ?? "";
-    if (!needle || needle.length < 8) {
-      return;
-    }
-    void findEpisodesByCloudinaryId(needle, catalogScope).then(
-      setCloudinaryMatches,
-    );
-  }, [videoUrl, catalogScope]);
+    const excludeEpisodeId =
+      replaceExisting && activeSeriesId.trim() && order >= 1
+        ? plannedEpisodeDocId(activeSeriesId, order)
+        : null;
+    const timer = window.setTimeout(() => {
+      void findEpisodesByCloudinaryId(
+        videoUrl,
+        catalogScope,
+        excludeEpisodeId,
+      ).then(setCloudinaryMatches);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [videoUrl, catalogScope, replaceExisting, activeSeriesId, order]);
 
   useEffect(() => {
     if (seriesMode !== "existing" || !selectedSeriesId) {
@@ -414,7 +456,20 @@ export function App() {
       throw new Error("Thumbnail URL is missing.");
     }
     const safeSeriesTitle = seriesTitle.trim() || `Series ${safeSeriesId}`;
-    const safeCoverUrl = seriesCoverUrl.trim() || safeThumbnailUrl;
+    const existingSeriesSnap = await getDoc(doc(db, "series", safeSeriesId));
+    const isNewSeries = !existingSeriesSnap.exists();
+    const existingCover =
+      existingSeriesSnap.exists() &&
+      typeof existingSeriesSnap.data()?.coverUrl === "string"
+        ? (existingSeriesSnap.data()?.coverUrl as string)
+        : null;
+    const safeCoverUrl = resolveSeriesCoverUrl({
+      manualCover: seriesCoverUrl,
+      episodeThumbnailUrl: safeThumbnailUrl,
+      isNewSeries,
+      episodeOrder: order,
+      existingCoverUrl: existingCover,
+    });
     const safeDuration = media.durationSec || durationSec;
     const episodeId = `${safeSeriesId}_e${order}`;
     const episodeRef = doc(db, "episodes", episodeId);
@@ -452,15 +507,24 @@ export function App() {
     const seriesOwnership =
       (await getSeriesOwnership(safeSeriesId)) ?? ownershipForCreate;
 
+    const videoPublicId = cloudinaryPublicIdFromUrl(safeVideoUrl);
+    const thumbPublicId = cloudinaryPublicIdFromUrl(safeThumbnailUrl);
     const episodePayload: Record<string, unknown> = {
       id: episodeId,
       seriesId: safeSeriesId,
       order,
       isVipLocked,
+      ...(!isVipLocked && bonusUnlockCost > 0 ? { bonusUnlockCost } : {}),
       durationSec: safeDuration,
       videoUrl: safeVideoUrl,
       thumbnailUrl: safeThumbnailUrl,
     };
+    if (videoPublicId) {
+      episodePayload.cloudinaryVideoPublicId = videoPublicId;
+    }
+    if (thumbPublicId) {
+      episodePayload.cloudinaryThumbPublicId = thumbPublicId;
+    }
     if (seriesOwnership?.providerId && seriesOwnership.createdByUid) {
       episodePayload.providerId = seriesOwnership.providerId;
       episodePayload.createdByUid = seriesOwnership.createdByUid;
@@ -470,10 +534,19 @@ export function App() {
     }
 
     setStatus("Saving episode to Firestore...");
+    const previousDuration =
+      existing.exists() && typeof existing.data()?.durationSec === "number"
+        ? (existing.data()?.durationSec as number)
+        : 0;
     await setDoc(episodeRef, episodePayload);
+    invalidateSeriesEpisodeCache(safeSeriesId);
 
-    setStatus("Syncing series episode count...");
-    const stats = await syncSeriesStats(safeSeriesId, seriesMeta);
+    setStatus("Updating series stats...");
+    const stats = await applyEpisodePublishStats(safeSeriesId, seriesMeta, {
+      durationSec: safeDuration,
+      isNewEpisode: !existing.exists(),
+      previousDurationSec: previousDuration,
+    });
 
     if (addToForYou && studioAccess?.canWriteFeatured) {
       setStatus("Adding series to For You...");
@@ -849,6 +922,24 @@ export function App() {
         >
           Media library
         </button>
+        {user && studioAccess?.role !== "none" ? (
+          <button
+            type="button"
+            className={`app-nav__item ${view === "dashboard" ? "is-active" : ""}`}
+            onClick={() => setView("dashboard")}
+          >
+            Dashboard
+          </button>
+        ) : null}
+        {user && studioAccess?.role !== "none" ? (
+          <button
+            type="button"
+            className={`app-nav__item ${view === "health" ? "is-active" : ""}`}
+            onClick={() => setView("health")}
+          >
+            Health
+          </button>
+        ) : null}
         {studioAccess?.canManageProviders ? (
           <button
             type="button"
@@ -923,20 +1014,45 @@ export function App() {
                 </button>
               </span>
             </div>
-            <button
-              className="btn btn--ghost"
-              type="button"
-              onClick={() => auth && signOut(auth)}
-            >
-              Sign out
-            </button>
+            <div className="user-row__actions">
+              <button
+                className="btn btn--ghost btn--sm"
+                type="button"
+                onClick={() => void refreshStudioAccess()}
+              >
+                Refresh role
+              </button>
+              <button
+                className="btn btn--ghost"
+                type="button"
+                onClick={() => auth && signOut(auth)}
+              >
+                Sign out
+              </button>
+            </div>
           </div>
         )}
       </section>
 
+      {view === "dashboard" && user && studioAccess?.role !== "none" ? (
+        <Dashboard
+          scopeProviderId={catalogScope}
+          studioAccess={studioAccess}
+        />
+      ) : null}
+
+      {view === "health" && user && studioAccess?.role !== "none" ? (
+        <CatalogHealth
+          scopeProviderId={catalogScope}
+          canRepair={studioAccess?.role === "superAdmin"}
+        />
+      ) : null}
+
       {view === "library" ? (
         <MediaLibrary
-          userReady={!!user && studioAccess?.role !== "none"}
+          userReady={
+            !!user && studioAccess != null && studioAccess.role !== "none"
+          }
           canDelete={studioAccess?.canDelete === true}
           scopeProviderId={catalogScope}
           studioAccess={studioAccess}
@@ -950,7 +1066,7 @@ export function App() {
       ) : null}
 
       {view === "activity" && studioAccess?.canViewAudit ? (
-        <ActivityLog />
+        <ActivityLog scopeProviderId={catalogScope} />
       ) : null}
 
       {view === "upload" ? (
@@ -968,7 +1084,14 @@ export function App() {
             <button
               type="button"
               className={seriesMode === "new" ? "is-active" : ""}
-              onClick={() => setSeriesMode("new")}
+              onClick={() => {
+                resetEpisodeForm(false);
+                setOrder(1);
+                setIsVipLocked(false);
+                setBonusUnlockCost(60);
+                setAddToForYou(true);
+                setSeriesMode("new");
+              }}
             >
               New series
             </button>
@@ -1046,8 +1169,13 @@ export function App() {
                 type="url"
                 value={seriesCoverUrl}
                 onChange={(e) => setSeriesCoverUrl(e.target.value)}
-                placeholder="https://..."
+                placeholder="Leave empty to use EP.1's first frame"
               />
+              <p className="hint">
+                Leave empty — on publish, the cover is set from the first frame
+                of this series' first episode. Only paste a URL here to override
+                with a custom cover.
+              </p>
             </div>
           )}
 
@@ -1152,6 +1280,19 @@ export function App() {
                 onChange={(e) => setIsVipLocked(e.target.checked)}
               />
               VIP locked episode
+            </label>
+            <label>
+              Bonus unlock cost
+              <input
+                type="number"
+                min={0}
+                step={5}
+                value={bonusUnlockCost}
+                disabled={isVipLocked}
+                onChange={(e) =>
+                  setBonusUnlockCost(Math.max(0, Number(e.target.value) || 0))
+                }
+              />
             </label>
             {studioAccess?.canWriteFeatured ? (
               <label className="check">

@@ -5,19 +5,39 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../../domain/entities/user.dart';
+import '../../../domain/interfaces/ad_gateway.dart';
 
 class RewardsState {
   const RewardsState({
     this.user,
     this.requiresSignIn = false,
     this.isWatchingAd = false,
+    this.adStatus = const AdStatus(phase: AdPhase.initializing),
     this.error,
   });
 
   final AppUser? user;
   final bool requiresSignIn;
   final bool isWatchingAd;
+  final AdStatus adStatus;
   final String? error;
+
+  RewardsState copyWith({
+    AppUser? user,
+    bool? requiresSignIn,
+    bool? isWatchingAd,
+    AdStatus? adStatus,
+    String? error,
+    bool clearError = false,
+  }) {
+    return RewardsState(
+      user: user ?? this.user,
+      requiresSignIn: requiresSignIn ?? this.requiresSignIn,
+      isWatchingAd: isWatchingAd ?? this.isWatchingAd,
+      adStatus: adStatus ?? this.adStatus,
+      error: clearError ? null : error ?? this.error,
+    );
+  }
 }
 
 class RewardsNotifier extends AsyncNotifier<RewardsState> {
@@ -26,6 +46,7 @@ class RewardsNotifier extends AsyncNotifier<RewardsState> {
   static const _dailyCooldown = Duration(hours: 20);
 
   StreamSubscription<AppUser>? _userSub;
+  StreamSubscription<AdStatus>? _adSub;
 
   @override
   Future<RewardsState> build() async {
@@ -36,15 +57,24 @@ class RewardsNotifier extends AsyncNotifier<RewardsState> {
 
     final userRepo = ref.read(userRepositoryProvider);
     _userSub = userRepo.watch(auth.uid).listen((user) {
-      state = AsyncData(RewardsState(user: user));
+      state =
+          AsyncData((state.value ?? const RewardsState()).copyWith(user: user));
     });
-    ref.onDispose(() => _userSub?.cancel());
 
     // Warm up a rewarded ad so the first "Watch" tap can show it instantly.
     final ad = ref.read(adGatewayProvider);
+    _adSub = ad.status.listen((status) {
+      state = AsyncData(
+        (state.value ?? const RewardsState()).copyWith(adStatus: status),
+      );
+    });
+    ref.onDispose(() {
+      _userSub?.cancel();
+      _adSub?.cancel();
+    });
     unawaited(ad.initialize().then((_) => ad.preloadRewarded()));
 
-    return const RewardsState();
+    return RewardsState(adStatus: ad.currentStatus);
   }
 
   Future<void> claimDailyCheckIn() async {
@@ -53,7 +83,10 @@ class RewardsNotifier extends AsyncNotifier<RewardsState> {
     final user = current?.user;
     if (auth == null || user == null) {
       state = AsyncData(
-        RewardsState(user: user, error: 'Sign in required.'),
+        (current ?? const RewardsState()).copyWith(
+          user: user,
+          error: 'Sign in required.',
+        ),
       );
       return;
     }
@@ -62,8 +95,7 @@ class RewardsNotifier extends AsyncNotifier<RewardsState> {
     final last = user.lastDailyCheckIn?.toUtc();
     if (last != null && now.difference(last) < _dailyCooldown) {
       state = AsyncData(
-        RewardsState(
-          user: user,
+        (current ?? RewardsState(user: user)).copyWith(
           error: 'Already claimed today. Come back later.',
         ),
       );
@@ -80,7 +112,7 @@ class RewardsNotifier extends AsyncNotifier<RewardsState> {
           );
     } catch (error) {
       state = AsyncData(
-        RewardsState(
+        (current ?? RewardsState(user: user)).copyWith(
           user: user,
           error: error.toString(),
         ),
@@ -93,13 +125,16 @@ class RewardsNotifier extends AsyncNotifier<RewardsState> {
     final auth = ref.read(currentAuthUserProvider).value;
     if (auth == null) {
       state = AsyncData(
-        RewardsState(user: current?.user, error: 'Sign in required.'),
+        (current ?? const RewardsState()).copyWith(
+          error: 'Sign in required.',
+        ),
       );
       return;
     }
 
     state = AsyncData(
-      RewardsState(user: current?.user, isWatchingAd: true),
+      (current ?? const RewardsState())
+          .copyWith(isWatchingAd: true, clearError: true),
     );
 
     String? errorMessage;
@@ -119,9 +154,22 @@ class RewardsNotifier extends AsyncNotifier<RewardsState> {
       errorMessage = error.toString();
     } finally {
       state = AsyncData(
-        RewardsState(user: state.value?.user, error: errorMessage),
+        (state.value ?? const RewardsState()).copyWith(
+          isWatchingAd: false,
+          error: errorMessage,
+          clearError: errorMessage == null,
+        ),
       );
     }
+  }
+
+  Future<void> retryAd() async {
+    final ad = ref.read(adGatewayProvider);
+    await ad.preloadRewarded();
+  }
+
+  Future<void> openAdInspector() {
+    return ref.read(adGatewayProvider).openAdInspector();
   }
 }
 

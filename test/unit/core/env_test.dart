@@ -16,6 +16,7 @@ void main() {
           'ADMOB_REWARDED_ANDROID is still the Google test ad unit ID.',
           'RC_API_KEY_IOS is empty.',
           'RC_API_KEY_ANDROID is empty.',
+          'REWARD_API_BASE_URL is empty.',
         ]),
       );
       expect(env.hasReleaseBlockingIssues, isTrue);
@@ -31,6 +32,7 @@ void main() {
         adMobRewardedUnitIdAndroid: 'ca-app-pub-1234567890123456/4444444444',
         revenueCatApiKeyIos: 'appl_abcdefghijklmnop',
         revenueCatApiKeyAndroid: 'goog_abcdefghijklmnop',
+        rewardApiBaseUrl: 'https://shortigo-rewards-api.example.workers.dev',
       );
 
       expect(env.releaseBlockingIssues, isEmpty);

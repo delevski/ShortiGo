@@ -93,9 +93,13 @@ Provider uploads use series IDs prefixed with `{providerId}_` (e.g. `acme_studio
 - `adminUsers/{uid}`: `{ "role": "provider", "providerId": "acme_studios", "active": true, "email": "…" }`
 - Super admin: document with no `role` or `"role": "superAdmin"`
 
+## Dashboard & catalog health
+
+Signed-in studio users can open **Dashboard** for catalog counts, runtime totals, and recent publishes. **Health** runs URL/stats/featured checks; super-admins can **Repair stats** on a series.
+
 ## Activity log
 
-Super admins can open **Activity** to review append-only `auditEvents` (sign-in, uploads, publishes, deletes, provider admin). Events are written by the CRM and constrained by security rules.
+Super admins see all `auditEvents`; providers see only their `providerId`. Supports combined action + provider filters, **Load more** pagination, and **Export CSV**. Events are append-only and constrained by security rules.
 
 ## How to publish
 

@@ -1,0 +1,10 @@
+name = "shortigo-rewards-api"
+main = "src/index.js"
+compatibility_date = "2026-06-04"
+
+[vars]
+FIREBASE_PROJECT_ID = "shortigo-prod"
+EPISODE_UNLOCK_COST = "60"
+DAILY_CHECK_IN_REWARD = "5"
+DAILY_AD_REWARD = "12"
+DAILY_AD_CAP = "3"

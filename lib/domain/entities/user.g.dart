@@ -21,6 +21,10 @@ _AppUser _$AppUserFromJson(Map<String, dynamic> json) => _AppUser(
               ?.map((e) => e as String)
               .toList() ??
           const <String>[],
+      unlockedEpisodeIds: (json['unlockedEpisodeIds'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const <String>[],
       lastDailyCheckIn: json['lastDailyCheckIn'] == null
           ? null
           : DateTime.parse(json['lastDailyCheckIn'] as String),
@@ -37,6 +41,7 @@ Map<String, dynamic> _$AppUserToJson(_AppUser instance) => <String, dynamic>{
       'coins': instance.coins,
       'bonus': instance.bonus,
       'favoriteSeriesIds': instance.favoriteSeriesIds,
+      'unlockedEpisodeIds': instance.unlockedEpisodeIds,
       'lastDailyCheckIn': instance.lastDailyCheckIn?.toIso8601String(),
       'createdAt': instance.createdAt.toIso8601String(),
     };
