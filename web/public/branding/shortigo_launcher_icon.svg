@@ -1,0 +1,15 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1024" height="1024" fill="#0B0613"/>
+  <rect x="96" y="96" width="832" height="832" rx="220" fill="url(#tile)"/>
+  <rect x="128" y="128" width="768" height="768" rx="188" stroke="white" stroke-opacity="0.16" stroke-width="18"/>
+  <path d="M405 317C405 287 438 269 463 285L686 434C731 464 731 530 686 560L463 709C438 725 405 707 405 677V317Z" fill="white"/>
+  <circle cx="724" cy="276" r="68" fill="#FFD166"/>
+  <circle cx="724" cy="276" r="34" fill="#FFF4C7"/>
+  <defs>
+    <radialGradient id="tile" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(328 224) rotate(52) scale(792)">
+      <stop stop-color="#E879F9"/>
+      <stop offset="0.42" stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#15101F"/>
+    </radialGradient>
+  </defs>
+</svg>
