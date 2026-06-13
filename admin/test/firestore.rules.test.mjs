@@ -34,7 +34,20 @@ beforeEach(async () => {
       coins: 0,
       bonus: 0,
       favoriteSeriesIds: [],
+      likedEpisodeIds: [],
+      followedSeriesIds: [],
+      unlockedEpisodeIds: [],
       lastDailyCheckIn: null,
+    });
+    await setDoc(doc(context.firestore(), "series", "series-1"), {
+      title: "Series",
+      saveCount: 0,
+      followerCount: 0,
+    });
+    await setDoc(doc(context.firestore(), "episodes", "episode-1"), {
+      seriesId: "series-1",
+      likeCount: 0,
+      shareCount: 0,
     });
   });
 });
@@ -58,6 +71,48 @@ test("mobile users can update My List", async () => {
   await assertSucceeds(
     updateDoc(doc(db, "users", userId), {
       favoriteSeriesIds: ["series-1"],
+    }),
+  );
+});
+
+test("mobile users can update social user lists", async () => {
+  const db = testEnv.authenticatedContext(userId).firestore();
+  await assertSucceeds(
+    updateDoc(doc(db, "users", userId), {
+      likedEpisodeIds: ["episode-1"],
+      followedSeriesIds: ["series-1"],
+    }),
+  );
+});
+
+test("mobile users can update social counters by one only", async () => {
+  const db = testEnv.authenticatedContext(userId).firestore();
+  await assertSucceeds(updateDoc(doc(db, "series", "series-1"), { saveCount: 1 }));
+  await assertSucceeds(updateDoc(doc(db, "series", "series-1"), { followerCount: 1 }));
+  await assertSucceeds(updateDoc(doc(db, "episodes", "episode-1"), { likeCount: 1 }));
+  await assertSucceeds(updateDoc(doc(db, "episodes", "episode-1"), { shareCount: 1 }));
+});
+
+test("mobile users cannot overstep social counter bounds", async () => {
+  const db = testEnv.authenticatedContext(userId).firestore();
+  await assertFails(updateDoc(doc(db, "series", "series-1"), { saveCount: 2 }));
+  await assertFails(updateDoc(doc(db, "series", "series-1"), { followerCount: -1 }));
+  await assertFails(updateDoc(doc(db, "episodes", "episode-1"), { likeCount: 2 }));
+  await assertFails(updateDoc(doc(db, "episodes", "episode-1"), { shareCount: -1 }));
+});
+
+test("mobile users cannot mix social counters with content edits", async () => {
+  const db = testEnv.authenticatedContext(userId).firestore();
+  await assertFails(
+    updateDoc(doc(db, "series", "series-1"), {
+      saveCount: 1,
+      title: "Tampered",
+    }),
+  );
+  await assertFails(
+    updateDoc(doc(db, "episodes", "episode-1"), {
+      shareCount: 1,
+      videoUrl: "https://example.com/tampered.mp4",
     }),
   );
 });

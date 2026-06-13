@@ -70,43 +70,53 @@ describe("firestore mappers", () => {
     expect(user.createdAt).toEqual(createdAt);
   });
 
-  it("maps transaction balance types without hiding invalid data", () => {
+  it("maps canonical transaction ledger fields", () => {
+    const at = new Date("2026-01-01T00:00:00Z");
+
     expect(
       mapTransaction("t1", {
         userId: "u1",
-        type: "daily_check_in",
-        amount: 5,
-        balanceType: "coins",
-        createdAt: Timestamp.fromDate(new Date("2026-01-01T00:00:00Z")),
+        type: "dailyCheckIn",
+        coinsDelta: 0,
+        bonusDelta: 5,
+        reference: "dailyCheckIn",
+        at: Timestamp.fromDate(at),
       }),
     ).toMatchObject({
       id: "t1",
-      balanceType: "coins",
+      userId: "u1",
+      type: "dailyCheckIn",
+      coinsDelta: 0,
+      bonusDelta: 5,
+      reference: "dailyCheckIn",
+      at,
     });
+  });
 
+  it("maps legacy transaction fields as a fallback", () => {
     expect(
       mapTransaction("t2", {
         userId: "u1",
-        type: "bonus_unlock",
+        type: "spend",
         amount: -1,
         balanceType: "bonus",
+        createdAt: Timestamp.fromDate(new Date("2026-01-01T00:00:00Z")),
       }),
     ).toMatchObject({
       id: "t2",
-      balanceType: "bonus",
+      coinsDelta: 0,
+      bonusDelta: -1,
+      at: new Date("2026-01-01T00:00:00Z"),
     });
-
-    expect(mapTransaction("t3", {}).balanceType).toBe("unknown");
-    expect(mapTransaction("t4", { balanceType: "credits" }).balanceType).toBe("unknown");
   });
 
   it("maps duck-typed timestamp values to dates", () => {
-    const createdAt = new Date("2026-02-03T04:05:06Z");
+    const at = new Date("2026-02-03T04:05:06Z");
 
     expect(
       mapTransaction("t1", {
-        createdAt: { toDate: () => createdAt },
-      }).createdAt,
-    ).toEqual(createdAt);
+        at: { toDate: () => at },
+      }).at,
+    ).toEqual(at);
   });
 });

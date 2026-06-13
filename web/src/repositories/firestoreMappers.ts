@@ -68,11 +68,11 @@ export function mapTransaction(id: string, data: Raw): WalletTransaction {
   return {
     id,
     userId: stringValue(data.userId),
-    type: stringValue(data.type),
-    amount: numberValue(data.amount),
-    balanceType: balanceTypeValue(data.balanceType),
-    createdAt: dateValue(data.createdAt),
-    description: optionalString(data.description),
+    type: transactionTypeValue(data.type),
+    coinsDelta: transactionCoinsDelta(data),
+    bonusDelta: transactionBonusDelta(data),
+    reference: optionalString(data.reference),
+    at: dateValue(data.at ?? data.createdAt),
   };
 }
 
@@ -101,8 +101,21 @@ function categoryValue(value: unknown): CategoryId {
   return typeof value === "string" && allowed.has(value) ? (value as CategoryId) : "new";
 }
 
-function balanceTypeValue(value: unknown): WalletTransaction["balanceType"] {
-  return value === "coins" || value === "bonus" ? value : "unknown";
+function transactionTypeValue(value: unknown): WalletTransaction["type"] {
+  const allowed = new Set(["adReward", "dailyCheckIn", "purchase", "spend", "refund"]);
+  return typeof value === "string" && allowed.has(value) ? (value as WalletTransaction["type"]) : "unknown";
+}
+
+function transactionCoinsDelta(data: Raw): number {
+  const canonical = optionalNumber(data.coinsDelta);
+  if (canonical !== undefined) return canonical;
+  return data.balanceType === "coins" ? numberValue(data.amount) : 0;
+}
+
+function transactionBonusDelta(data: Raw): number {
+  const canonical = optionalNumber(data.bonusDelta);
+  if (canonical !== undefined) return canonical;
+  return data.balanceType === "bonus" ? numberValue(data.amount) : 0;
 }
 
 function stringList(value: unknown): string[] {

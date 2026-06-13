@@ -52,7 +52,7 @@ export async function ensureUserDoc(db: Firestore, authUser: User): Promise<void
 
 export async function fetchTransactions(db: Firestore, uid: string): Promise<WalletTransaction[]> {
   const snap = await getDocs(
-    query(collection(db, "users", uid, "transactions"), orderBy("createdAt", "desc"), limit(25)),
+    query(collection(db, "users", uid, "transactions"), orderBy("at", "desc"), limit(25)),
   );
   return snap.docs.map((item) => mapTransaction(item.id, item.data()));
 }

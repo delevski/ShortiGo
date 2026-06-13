@@ -5,17 +5,42 @@ import {
   increment,
   runTransaction,
   serverTimestamp,
-  setDoc,
   type Firestore,
 } from "firebase/firestore";
+
+const DAILY_CHECK_IN_BONUS = 5;
+const WEB_AD_REWARD_BONUS = 12;
+
+export function dailyCheckInLedgerPayload<T>(userId: string, at: T) {
+  return {
+    userId,
+    type: "dailyCheckIn",
+    coinsDelta: 0,
+    bonusDelta: DAILY_CHECK_IN_BONUS,
+    reference: "dailyCheckIn",
+    at,
+  };
+}
+
+export function adRewardLedgerPayload<T>(userId: string, at: T) {
+  return {
+    userId,
+    type: "adReward",
+    coinsDelta: 0,
+    bonusDelta: WEB_AD_REWARD_BONUS,
+    reference: "webReward",
+    at,
+  };
+}
 
 export function shouldUseRewardApi(baseUrl: string): boolean {
   return baseUrl.trim().length > 0;
 }
 
-export function canClaimDailyCheckIn(lastDailyCheckIn: Date | undefined, now = new Date()): boolean {
-  if (!lastDailyCheckIn) return true;
-  return utcDateKey(lastDailyCheckIn) !== utcDateKey(now);
+export function canClaimDailyCheckIn(lastDailyCheckIn: Date | string | undefined, now = new Date()): boolean {
+  const lastDate = storedDate(lastDailyCheckIn);
+  if (!lastDate) return true;
+  return utcDateKey(lastDate) !== utcDateKey(now);
 }
 
 export async function claimDailyCheckIn(params: {
@@ -38,40 +63,37 @@ export async function claimDailyCheckIn(params: {
   const transactionRef = doc(collection(params.db, "users", params.userId, "transactions"));
   await runTransaction(params.db, async (transaction) => {
     const user = await transaction.get(userRef);
-    const last = user.data()?.lastDailyCheckIn;
-    const lastDate = last && typeof last.toDate === "function" ? last.toDate() : undefined;
-    if (!canClaimDailyCheckIn(lastDate)) return;
+    if (!canClaimDailyCheckIn(user.data()?.lastDailyCheckIn)) return;
+    const at = serverTimestamp();
     transaction.update(userRef, {
-      bonus: increment(12),
-      lastDailyCheckIn: serverTimestamp(),
+      bonus: increment(DAILY_CHECK_IN_BONUS),
+      lastDailyCheckIn: at,
     });
-    transaction.set(transactionRef, {
-      userId: params.userId,
-      type: "daily_check_in",
-      amount: 12,
-      balanceType: "bonus",
-      description: "Daily check-in",
-      createdAt: serverTimestamp(),
-    });
+    transaction.set(transactionRef, dailyCheckInLedgerPayload(params.userId, at));
   });
 }
 
 export async function grantWebAdReward(db: Firestore, userId: string): Promise<void> {
   const transactionRef = doc(collection(db, "users", userId, "transactions"));
-  await setDoc(transactionRef, {
-    userId,
-    type: "web_reward",
-    amount: 12,
-    balanceType: "bonus",
-    description: "Web reward",
-    createdAt: serverTimestamp(),
-  });
   await runTransaction(db, async (transaction) => {
     const userRef = doc(db, "users", userId);
-    transaction.update(userRef, { bonus: increment(12) });
+    transaction.update(userRef, { bonus: increment(WEB_AD_REWARD_BONUS) });
+    transaction.set(transactionRef, adRewardLedgerPayload(userId, serverTimestamp()));
   });
 }
 
 function utcDateKey(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+function storedDate(value: unknown): Date | undefined {
+  if (value instanceof Date) return value;
+  if (value && typeof value === "object" && "toDate" in value && typeof value.toDate === "function") {
+    return value.toDate();
+  }
+  if (typeof value === "string") {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+  }
+  return undefined;
 }

@@ -58,11 +58,11 @@ export type AppUser = {
 export type WalletTransaction = {
   id: string;
   userId: string;
-  type: string;
-  amount: number;
-  balanceType: "coins" | "bonus" | "unknown";
-  createdAt: Date;
-  description?: string;
+  type: "adReward" | "dailyCheckIn" | "purchase" | "spend" | "refund" | "unknown";
+  coinsDelta: number;
+  bonusDelta: number;
+  reference?: string;
+  at: Date;
 };
 
 export const categories: { id: CategoryId; label: string }[] = [
