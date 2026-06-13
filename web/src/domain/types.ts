@@ -60,7 +60,7 @@ export type WalletTransaction = {
   userId: string;
   type: string;
   amount: number;
-  balanceType: "coins" | "bonus";
+  balanceType: "coins" | "bonus" | "unknown";
   createdAt: Date;
   description?: string;
 };

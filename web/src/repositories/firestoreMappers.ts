@@ -24,7 +24,7 @@ export function mapSeries(id: string, data: Raw): Series {
     watchCount: numberValue(data.watchCount),
     saveCount: numberValue(data.saveCount),
     followerCount: numberValue(data.followerCount),
-    isPublished: booleanValue(data.isPublished, true),
+    isPublished: booleanValue(data.isPublished, false),
   };
 }
 
@@ -70,7 +70,7 @@ export function mapTransaction(id: string, data: Raw): WalletTransaction {
     userId: stringValue(data.userId),
     type: stringValue(data.type),
     amount: numberValue(data.amount),
-    balanceType: data.balanceType === "coins" ? "coins" : "bonus",
+    balanceType: balanceTypeValue(data.balanceType),
     createdAt: dateValue(data.createdAt),
     description: optionalString(data.description),
   };
@@ -99,6 +99,10 @@ function booleanValue(value: unknown, fallback: boolean): boolean {
 function categoryValue(value: unknown): CategoryId {
   const allowed = new Set(["forYou", "new", "hot", "adventure", "scary", "anime", "vip"]);
   return typeof value === "string" && allowed.has(value) ? (value as CategoryId) : "new";
+}
+
+function balanceTypeValue(value: unknown): WalletTransaction["balanceType"] {
+  return value === "coins" || value === "bonus" ? value : "unknown";
 }
 
 function stringList(value: unknown): string[] {
