@@ -50,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const configuredDb = db;
     let appUserUnsubscribe: Unsubscribe | null = null;
     let isActive = true;
+    let authSequence = 0;
 
     const clearAppUserSubscription = () => {
       if (appUserUnsubscribe) {
@@ -61,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const authUnsubscribe = onAuthStateChanged(
       auth,
       (nextUser) => {
+        const sequence = ++authSequence;
         clearAppUserSubscription();
         setAuthUser(nextUser);
         setAppUser(null);
@@ -74,24 +76,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(true);
         void ensureUserDoc(configuredDb, nextUser)
           .then(() => {
-            if (!isActive) return;
+            if (!isActive || sequence !== authSequence) return;
             appUserUnsubscribe = watchAppUser(
               configuredDb,
               nextUser.uid,
               (nextAppUser) => {
-                if (!isActive) return;
+                if (!isActive || sequence !== authSequence) return;
                 setAppUser(nextAppUser);
                 setLoading(false);
               },
               (watchError) => {
-                if (!isActive) return;
+                if (!isActive || sequence !== authSequence) return;
                 setError(watchError);
                 setLoading(false);
               },
             );
           })
           .catch((ensureError: unknown) => {
-            if (!isActive) return;
+            if (!isActive || sequence !== authSequence) return;
             setError(ensureError instanceof Error ? ensureError : new Error("Unable to sync user."));
             setLoading(false);
           });
