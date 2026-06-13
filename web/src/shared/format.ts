@@ -1,13 +1,20 @@
 export function compactCount(value: number): string {
   const abs = Math.abs(value);
   if (abs < 1_000) return String(value);
-  if (abs < 1_000_000) return trimCompact(value / 1_000, "K");
+  if (abs < 1_000_000) {
+    const roundedThousands = Math.round((value / 1_000) * 10) / 10;
+    if (Math.abs(roundedThousands) < 1_000) return formatCompact(roundedThousands, "K");
+  }
   return trimCompact(value / 1_000_000, "M");
 }
 
 function trimCompact(value: number, suffix: string): string {
   const rounded = Math.round(value * 10) / 10;
-  return `${Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)}${suffix}`;
+  return formatCompact(rounded, suffix);
+}
+
+function formatCompact(value: number, suffix: string): string {
+  return `${Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1)}${suffix}`;
 }
 
 export function durationLabel(totalSeconds: number): string {

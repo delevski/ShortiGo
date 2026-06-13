@@ -12,6 +12,26 @@ describe("share helpers", () => {
     ).toBe("https://shortigo.app/series/series_1/episodes/episode_3");
   });
 
+  it("normalizes trailing slash origins", () => {
+    expect(
+      episodeShareUrl({
+        origin: "https://shortigo.app/",
+        seriesId: "series_1",
+        episodeId: "episode_3",
+      }),
+    ).toBe("https://shortigo.app/series/series_1/episodes/episode_3");
+  });
+
+  it("path-encodes series and episode ids", () => {
+    expect(
+      episodeShareUrl({
+        origin: "https://shortigo.app",
+        seriesId: "series/1",
+        episodeId: "episode 3?",
+      }),
+    ).toBe("https://shortigo.app/series/series%2F1/episodes/episode%203%3F");
+  });
+
   it("builds share text", () => {
     expect(
       episodeShareText({

@@ -40,6 +40,15 @@ describe("episodeAccess", () => {
     });
   });
 
+  it("requires vip even when locked episode id is in unlocked episodes", () => {
+    expect(
+      episodeAccess(
+        { ...openEpisode, isVipLocked: true, bonusUnlockCost: 12 },
+        { ...user, unlockedEpisodeIds: ["e1"] },
+      ),
+    ).toEqual({ state: "vip", bonusCost: 12 });
+  });
+
   it("opens vip episodes for vip users", () => {
     expect(
       episodeAccess({ ...openEpisode, isVipLocked: true }, { ...user, isVip: true }),

@@ -7,6 +7,7 @@ describe("format helpers", () => {
     expect(compactCount(999)).toBe("999");
     expect(compactCount(1_200)).toBe("1.2K");
     expect(compactCount(242_600)).toBe("242.6K");
+    expect(compactCount(999_950)).toBe("1M");
     expect(compactCount(1_500_000)).toBe("1.5M");
   });
 
