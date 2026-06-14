@@ -372,6 +372,16 @@ button:disabled {
   margin-top: 4px;
 }
 
+.state-view__button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--bg);
+  padding: 0 14px;
+  font-weight: 900;
+}
+
 .loading-ring {
   width: 34px;
   height: 34px;
@@ -433,6 +443,276 @@ button:disabled {
 
 .shell-nav--mobile {
   display: none;
+}
+
+.shorts-stage {
+  display: grid;
+  grid-template-columns: minmax(280px, 405px) 82px;
+  gap: 18px;
+  align-items: end;
+  justify-content: center;
+  min-height: calc(100vh - 144px);
+}
+
+.shorts-card {
+  position: relative;
+  overflow: hidden;
+  width: min(405px, calc(100vw - 48px));
+  aspect-ratio: 9 / 16;
+  min-height: 560px;
+  max-height: calc(100vh - 122px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: #050308;
+  box-shadow: 0 24px 68px rgba(0, 0, 0, 0.36);
+}
+
+.shorts-video-shell,
+.shorts-video-button,
+.shorts-video-button video {
+  width: 100%;
+  height: 100%;
+}
+
+.shorts-video-shell {
+  position: absolute;
+  inset: 0;
+}
+
+.shorts-video-button {
+  position: relative;
+  display: block;
+  border: 0;
+  background: #050308;
+  color: var(--text);
+  padding: 0;
+}
+
+.shorts-video-button::after {
+  position: absolute;
+  inset: 38% 0 0;
+  content: "";
+  background: linear-gradient(transparent, rgba(5, 3, 8, 0.86));
+}
+
+.shorts-video-button video {
+  display: block;
+  object-fit: cover;
+}
+
+.shorts-video-button__play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  background: rgba(245, 243, 255, 0.9);
+  color: #0b0613;
+  transform: translate(-50%, -50%);
+}
+
+.shorts-progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 4;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.shorts-progress span {
+  display: block;
+  height: 100%;
+  background: var(--text);
+  transition: width 120ms linear;
+}
+
+.shorts-info {
+  position: absolute;
+  right: 0;
+  bottom: 18px;
+  left: 0;
+  z-index: 3;
+  display: grid;
+  gap: 6px;
+  padding: 0 18px 16px;
+  pointer-events: none;
+}
+
+.shorts-info__eyebrow {
+  width: fit-content;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.shorts-info h1 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 1.28rem;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.shorts-info p {
+  display: -webkit-box;
+  max-width: 100%;
+  margin: 0;
+  overflow: hidden;
+  color: rgba(245, 243, 255, 0.82);
+  font-size: 0.92rem;
+  line-height: 1.42;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.shorts-action-rail {
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+  padding-bottom: 4px;
+}
+
+.shorts-avatar-button,
+.shorts-rail-button,
+.shorts-rail-link {
+  color: var(--text);
+}
+
+.shorts-avatar-button {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  border: 2px solid rgba(255, 255, 255, 0.36);
+  border-radius: 999px;
+  background: var(--surface-elevated);
+  padding: 0;
+}
+
+.shorts-avatar-button--active {
+  border-color: var(--primary-light);
+}
+
+.shorts-avatar-button img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+.shorts-avatar-button__badge {
+  position: absolute;
+  right: -2px;
+  bottom: -4px;
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border: 2px solid var(--bg);
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+.shorts-avatar-button--active .shorts-avatar-button__badge {
+  background: var(--success);
+}
+
+.shorts-rail-button,
+.shorts-rail-link {
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+  width: 72px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.shorts-rail-button__icon,
+.shorts-rail-link svg {
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.11);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.26);
+}
+
+.shorts-rail-button--active {
+  color: var(--accent);
+}
+
+.locked-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: rgba(5, 3, 8, 0.68);
+  padding: 24px;
+  backdrop-filter: blur(10px);
+}
+
+.locked-overlay__content {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  width: min(300px, 100%);
+  text-align: center;
+}
+
+.locked-overlay__content > svg {
+  color: var(--vip-gold);
+}
+
+.locked-overlay h2,
+.locked-overlay p {
+  margin: 0;
+}
+
+.locked-overlay h2 {
+  overflow-wrap: anywhere;
+  font-size: 1.22rem;
+  letter-spacing: 0;
+}
+
+.locked-overlay p {
+  color: rgba(245, 243, 255, 0.82);
+  line-height: 1.45;
+}
+
+.locked-overlay__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.locked-overlay__actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--bg);
+  padding: 0 14px;
+  font-weight: 900;
 }
 
 @keyframes spin {
@@ -519,6 +799,10 @@ button:disabled {
   .shell-nav--mobile .shell-nav__link:hover {
     transform: none;
   }
+
+  .shorts-stage {
+    min-height: calc(100vh - 66px - 76px);
+  }
 }
 
 @media (max-width: 520px) {
@@ -539,5 +823,63 @@ button:disabled {
   .route-panel,
   .state-view {
     padding: 18px;
+  }
+
+  .app-shell__content {
+    padding: 0;
+  }
+
+  .shorts-stage {
+    position: relative;
+    grid-template-columns: 1fr;
+    gap: 0;
+    min-height: calc(100vh - 66px - 76px);
+    align-items: stretch;
+  }
+
+  .shorts-card {
+    width: 100%;
+    min-height: calc(100vh - 66px - 76px);
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .shorts-action-rail {
+    position: absolute;
+    right: 9px;
+    bottom: 24px;
+    z-index: 6;
+    gap: 10px;
+    padding-bottom: 0;
+  }
+
+  .shorts-avatar-button {
+    width: 48px;
+    height: 48px;
+  }
+
+  .shorts-rail-button,
+  .shorts-rail-link {
+    width: 54px;
+    color: var(--text);
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
+  }
+
+  .shorts-rail-button__icon,
+  .shorts-rail-link svg {
+    width: 42px;
+    height: 42px;
+    background: rgba(5, 3, 8, 0.46);
+  }
+
+  .shorts-info {
+    right: 64px;
+    bottom: 12px;
+    padding: 0 12px 14px;
+  }
+
+  .shorts-info p {
+    -webkit-line-clamp: 2;
   }
 }

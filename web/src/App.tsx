@@ -1,54 +1,11 @@
-import { Gift, Lock, Play, Search, Wallet } from "lucide-react";
+import { Lock, Play, Search, Wallet } from "lucide-react";
 import { Route, Routes } from "react-router-dom";
 import { AppShell } from "./app/AppShell";
-import { AuthProvider, useAuth } from "./app/AuthContext";
+import { AuthProvider } from "./app/AuthContext";
 import { RequireAuth } from "./app/RequireAuth";
 import { EmptyView } from "./components/EmptyView";
-import { ErrorView } from "./components/ErrorView";
-import { LoadingView } from "./components/LoadingView";
 import { ToastProvider } from "./components/Toast";
-
-function FeedScreen() {
-  const { configReady, error, loading } = useAuth();
-
-  return (
-    <section className="feed-screen">
-      <div className="feed-rail" aria-label="For You preview">
-        <article className="short-card short-card--hero">
-          <div className="short-card__media">
-            <img src="/branding/splash_hero.png" alt="" />
-            <button className="play-button" type="button" aria-label="Play featured short">
-              <Play aria-hidden="true" size={24} fill="currentColor" />
-            </button>
-          </div>
-          <div className="short-card__copy">
-            <span>For You</span>
-            <h1>Bite-sized drama, unlocked in coins.</h1>
-            <p>Follow the feed, stack daily rewards, and keep your favorite series close.</p>
-          </div>
-        </article>
-        <article className="reward-panel">
-          <Gift aria-hidden="true" size={22} />
-          <div>
-            <h2>Daily rewards</h2>
-            <p>Wallet, unlocks, and check-ins are ready for the next task.</p>
-          </div>
-        </article>
-      </div>
-
-      <aside className="feed-status">
-        {loading ? <LoadingView title="Checking account" /> : null}
-        {!loading && error ? <ErrorView title="Auth status" message={error.message} /> : null}
-        {!loading && !error && !configReady ? (
-          <ErrorView title="Local preview mode" message="Firebase env values are missing, so login is disabled." />
-        ) : null}
-        {!loading && !error && configReady ? (
-          <EmptyView title="Ready for content" message="Catalog routes can plug into this shell next." />
-        ) : null}
-      </aside>
-    </section>
-  );
-}
+import { ShortsPage } from "./features/shorts/ShortsPage";
 
 function ExploreScreen() {
   return (
@@ -96,7 +53,8 @@ export function App() {
       <ToastProvider>
         <AppShell>
           <Routes>
-            <Route path="/" element={<FeedScreen />} />
+            <Route path="/" element={<ShortsPage />} />
+            <Route path="/shorts" element={<ShortsPage />} />
             <Route path="/explore" element={<ExploreScreen />} />
             <Route path="/trending" element={<TrendingScreen />} />
             <Route
