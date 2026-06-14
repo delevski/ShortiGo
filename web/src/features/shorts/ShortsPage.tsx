@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/AuthContext";
 import { EmptyView } from "../../components/EmptyView";
 import { ErrorView } from "../../components/ErrorView";
@@ -25,8 +25,12 @@ export function ShortsPage() {
   const { episodes, error, loading, reload, seriesById } = useShortsFeed();
   const { showToast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [index, setIndex] = useState(0);
+  const [deepLinkApplied, setDeepLinkApplied] = useState(false);
   const lastWheelAtRef = useRef(0);
+  const requestedSeriesId = searchParams.get("series");
+  const requestedEpisodeId = searchParams.get("episode");
 
   const feedItems = useMemo(
     () =>
@@ -42,6 +46,17 @@ export function ShortsPage() {
   useEffect(() => {
     setIndex((current) => Math.min(current, Math.max(0, feedItems.length - 1)));
   }, [feedItems.length]);
+
+  useEffect(() => {
+    if (deepLinkApplied || !requestedSeriesId || !requestedEpisodeId || feedItems.length === 0) return;
+    const requestedIndex = feedItems.findIndex(
+      ({ episode, series }) => series.id === requestedSeriesId && episode.id === requestedEpisodeId,
+    );
+    if (requestedIndex >= 0) {
+      setIndex(requestedIndex);
+      setDeepLinkApplied(true);
+    }
+  }, [deepLinkApplied, feedItems, requestedEpisodeId, requestedSeriesId]);
 
   const move = useCallback(
     (delta: number) => {
