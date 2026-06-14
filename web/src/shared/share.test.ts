@@ -32,6 +32,17 @@ describe("share helpers", () => {
     ).toBe("https://shortigo.app/series/series%2F1/episodes/episode%203%3F");
   });
 
+  it("can point shares at the shorts feed route", () => {
+    expect(
+      episodeShareUrl({
+        origin: "https://shortigo.app/",
+        seriesId: "series 1",
+        episodeId: "episode 2",
+        route: "shorts",
+      }),
+    ).toBe("https://shortigo.app/shorts?series=series+1&episode=episode+2");
+  });
+
   it("builds share text", () => {
     expect(
       episodeShareText({

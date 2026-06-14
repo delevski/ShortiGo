@@ -54,5 +54,8 @@ describe("ShortsActionRail", () => {
 
     expect(screen.getByText("242.6K")).toBeTruthy();
     expect(screen.getByText("31.9K")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /series info/i }).getAttribute("href")).toBe(
+      "/shorts?series=series-1&episode=episode-1",
+    );
   });
 });

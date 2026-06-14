@@ -172,6 +172,7 @@ export function ShortsPage() {
       episodeId: episode.id,
       episodeOrder: episode.order,
       origin: publicOrigin,
+      route: "shorts",
       seriesId: series.id,
       seriesTitle: series.title,
     });
@@ -212,6 +213,10 @@ export function ShortsPage() {
           access={access}
           onLogin={handleLogin}
           onSubscribe={() => {
+            if (!authUser) {
+              void handleLogin();
+              return;
+            }
             showToast("VIP subscriptions will be handled from the wallet.", "info");
             navigate("/wallet");
           }}

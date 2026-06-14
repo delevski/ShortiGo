@@ -2,6 +2,7 @@ type EpisodeShareUrlInput = {
   origin: string;
   seriesId: string;
   episodeId: string;
+  route?: "episode" | "shorts";
 };
 
 type EpisodeShareTextInput = EpisodeShareUrlInput & {
@@ -9,8 +10,17 @@ type EpisodeShareTextInput = EpisodeShareUrlInput & {
   episodeOrder: number;
 };
 
-export function episodeShareUrl({ origin, seriesId, episodeId }: EpisodeShareUrlInput): string {
+export function episodeShareUrl({
+  origin,
+  seriesId,
+  episodeId,
+  route = "episode",
+}: EpisodeShareUrlInput): string {
   const base = origin.replace(/\/+$/, "");
+  if (route === "shorts") {
+    const params = new URLSearchParams({ series: seriesId, episode: episodeId });
+    return `${base}/shorts?${params.toString()}`;
+  }
   return `${base}/series/${encodeURIComponent(seriesId)}/episodes/${encodeURIComponent(episodeId)}`;
 }
 
