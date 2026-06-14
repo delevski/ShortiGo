@@ -28,6 +28,7 @@ export function ShortsPage() {
   const [searchParams] = useSearchParams();
   const [index, setIndex] = useState(0);
   const [appliedDeepLink, setAppliedDeepLink] = useState<string | null>(null);
+  const [pendingWalletNavigation, setPendingWalletNavigation] = useState(false);
   const lastWheelAtRef = useRef(0);
   const requestedSeriesId = searchParams.get("series");
   const requestedEpisodeId = searchParams.get("episode");
@@ -82,6 +83,12 @@ export function ShortsPage() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [move]);
+
+  useEffect(() => {
+    if (!pendingWalletNavigation || !authUser) return;
+    setPendingWalletNavigation(false);
+    navigate("/wallet");
+  }, [authUser, navigate, pendingWalletNavigation]);
 
   const activeItem = feedItems[index];
   const requireUser = useCallback(() => {
@@ -231,6 +238,7 @@ export function ShortsPage() {
           onLogin={handleLogin}
           onSubscribe={() => {
             if (!authUser) {
+              if (configReady) setPendingWalletNavigation(true);
               void handleLogin();
               return;
             }
