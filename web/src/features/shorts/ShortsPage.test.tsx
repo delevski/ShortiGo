@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import { BrowserRouter, MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Episode, Series } from "../../domain/types";
 import { ShortsPage } from "./ShortsPage";
@@ -97,6 +97,26 @@ describe("ShortsPage", () => {
         <ShortsPage />
       </MemoryRouter>,
     );
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Second Story" })).toBeTruthy());
+    expect(screen.getByText("EP.7")).toBeTruthy();
+  });
+
+  it("updates the active episode when shorts query params change in the mounted route", async () => {
+    window.history.pushState(null, "", "/shorts?series=series-1&episode=episode-1");
+
+    render(
+      <BrowserRouter>
+        <ShortsPage />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByRole("heading", { name: "First Story" })).toBeTruthy());
+
+    act(() => {
+      window.history.pushState(null, "", "/shorts?series=series-2&episode=episode-2");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Second Story" })).toBeTruthy());
     expect(screen.getByText("EP.7")).toBeTruthy();

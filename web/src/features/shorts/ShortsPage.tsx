@@ -27,7 +27,7 @@ export function ShortsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [index, setIndex] = useState(0);
-  const [deepLinkApplied, setDeepLinkApplied] = useState(false);
+  const [appliedDeepLink, setAppliedDeepLink] = useState<string | null>(null);
   const lastWheelAtRef = useRef(0);
   const requestedSeriesId = searchParams.get("series");
   const requestedEpisodeId = searchParams.get("episode");
@@ -48,15 +48,17 @@ export function ShortsPage() {
   }, [feedItems.length]);
 
   useEffect(() => {
-    if (deepLinkApplied || !requestedSeriesId || !requestedEpisodeId || feedItems.length === 0) return;
+    if (!requestedSeriesId || !requestedEpisodeId || feedItems.length === 0) return;
+    const requestedKey = `${requestedSeriesId}\u0000${requestedEpisodeId}`;
+    if (appliedDeepLink === requestedKey) return;
     const requestedIndex = feedItems.findIndex(
       ({ episode, series }) => series.id === requestedSeriesId && episode.id === requestedEpisodeId,
     );
     if (requestedIndex >= 0) {
       setIndex(requestedIndex);
-      setDeepLinkApplied(true);
+      setAppliedDeepLink(requestedKey);
     }
-  }, [deepLinkApplied, feedItems, requestedEpisodeId, requestedSeriesId]);
+  }, [appliedDeepLink, feedItems, requestedEpisodeId, requestedSeriesId]);
 
   const move = useCallback(
     (delta: number) => {
