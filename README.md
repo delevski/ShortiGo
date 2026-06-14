@@ -549,6 +549,30 @@ notifications, casting, a real recommendation algorithm, social features
 
 ## Documentation
 
+## Web app
+
+The public consumer web app lives in `web/`.
+
+```bash
+cp web/.env.example web/.env.local
+npm install --prefix web
+npm run dev --prefix web
+npm run build --prefix web
+npm test --prefix web
+```
+
+Required Firebase variables use the same `VITE_FIREBASE_*` pattern as the admin app.
+The web app reads the existing ShortiGo Firestore collections: `series`, `episodes`,
+`users`, user `transactions`, and `admin/featured`.
+
+For local Firebase Auth testing, prefer `http://localhost:5173` and add that domain
+in Firebase Authentication authorized domains if Google sign-in reports
+`auth/unauthorized-domain`.
+
+Firebase hosting currently keeps legal/static pages in `hosting/public`. Deploy the
+web app to a separate hosting target that points at `web/dist` unless the Firebase
+project has explicit multi-site targets configured.
+
 - `docs/superpowers/specs/2026-06-01-shortigo-design.md` — full approved design spec
   (architecture, data model, flows, performance budgets, security).
 - `docs/release-checklist-v1.md` — release verification results and pre-submission tasks.

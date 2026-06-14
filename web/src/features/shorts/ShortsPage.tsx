@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type WheelEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/AuthContext";
 import { EmptyView } from "../../components/EmptyView";
@@ -28,8 +28,9 @@ export function ShortsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [index, setIndex] = useState(0);
-  const [appliedDeepLink, setAppliedDeepLink] = useState<string | null>(null);
-  const [pendingWalletNavigation, setPendingWalletNavigation] = useState(false);
+  const [muted, setMuted] = useState(true);
+  const appliedDeepLinkRef = useRef<string | null>(null);
+  const pendingWalletNavigationRef = useRef(false);
   const lastWheelAtRef = useRef(0);
   const requestedSeriesId = searchParams.get("series");
   const requestedEpisodeId = searchParams.get("episode");
@@ -52,21 +53,32 @@ export function ShortsPage() {
   useEffect(() => {
     if (!requestedSeriesId || !requestedEpisodeId || feedItems.length === 0) return;
     const requestedKey = `${requestedSeriesId}\u0000${requestedEpisodeId}`;
-    if (appliedDeepLink === requestedKey) return;
+    if (appliedDeepLinkRef.current === requestedKey) return;
     const requestedIndex = feedItems.findIndex(
       ({ episode, series }) => series.id === requestedSeriesId && episode.id === requestedEpisodeId,
     );
     if (requestedIndex >= 0) {
       setIndex(requestedIndex);
-      setAppliedDeepLink(requestedKey);
+      appliedDeepLinkRef.current = requestedKey;
     }
-  }, [appliedDeepLink, feedItems, requestedEpisodeId, requestedSeriesId]);
+  }, [feedItems, requestedEpisodeId, requestedSeriesId]);
 
   const move = useCallback(
     (delta: number) => {
       setIndex((current) => Math.min(Math.max(current + delta, 0), Math.max(0, feedItems.length - 1)));
     },
     [feedItems.length],
+  );
+
+  const handleWheel = useCallback(
+    (event: WheelEvent<HTMLElement>) => {
+      if (Math.abs(event.deltaY) < 36) return;
+      const now = Date.now();
+      if (now - lastWheelAtRef.current < 420) return;
+      lastWheelAtRef.current = now;
+      move(event.deltaY > 0 ? 1 : -1);
+    },
+    [move],
   );
 
   useEffect(() => {
@@ -86,10 +98,10 @@ export function ShortsPage() {
   }, [move]);
 
   useEffect(() => {
-    if (!pendingWalletNavigation || !authUser) return;
-    setPendingWalletNavigation(false);
+    if (!pendingWalletNavigationRef.current || !authUser) return;
+    pendingWalletNavigationRef.current = false;
     navigate("/wallet");
-  }, [authUser, navigate, pendingWalletNavigation]);
+  }, [authUser, navigate]);
 
   const activeItem = feedItems[index];
   const requireUser = useCallback(() => {
@@ -250,25 +262,15 @@ export function ShortsPage() {
   };
 
   return (
-    <section
-      className="shorts-stage"
-      aria-label="For You shorts"
-      onWheel={(event) => {
-        if (Math.abs(event.deltaY) < 36) return;
-        const now = Date.now();
-        if (now - lastWheelAtRef.current < 420) return;
-        lastWheelAtRef.current = now;
-        move(event.deltaY > 0 ? 1 : -1);
-      }}
-    >
+    <section className="shorts-stage" aria-label="For You shorts" onWheel={handleWheel}>
       <div className="shorts-card">
-        <ShortsVideo active episode={episode} unlocked={unlocked} />
+        <ShortsVideo active episode={episode} muted={muted} unlocked={unlocked} />
         <LockedEpisodeOverlay
           access={access}
           onLogin={handleLogin}
           onSubscribe={() => {
             if (!authUser) {
-              if (configReady) setPendingWalletNavigation(true);
+              if (configReady) pendingWalletNavigationRef.current = true;
               void handleLogin();
               return;
             }
@@ -278,18 +280,20 @@ export function ShortsPage() {
           onUnlock={() => showToast("Episode unlocks are coming in the rewards task.", "info")}
         />
         <ShortsInfoPanel episode={episode} series={series} />
+        <ShortsActionRail
+          episode={episode}
+          followed={followed}
+          liked={liked}
+          muted={muted}
+          onFollow={toggleFollow}
+          onLike={toggleLike}
+          onMuteToggle={() => setMuted((current) => !current)}
+          onSave={toggleSave}
+          onShare={shareEpisode}
+          saved={saved}
+          series={series}
+        />
       </div>
-      <ShortsActionRail
-        episode={episode}
-        followed={followed}
-        liked={liked}
-        onFollow={toggleFollow}
-        onLike={toggleLike}
-        onSave={toggleSave}
-        onShare={shareEpisode}
-        saved={saved}
-        series={series}
-      />
     </section>
   );
 }

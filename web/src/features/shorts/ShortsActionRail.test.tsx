@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import type { Episode, Series } from "../../domain/types";
@@ -44,8 +44,10 @@ describe("ShortsActionRail", () => {
           liked={false}
           saved={false}
           followed={false}
+          muted
           onFollow={vi.fn()}
           onLike={vi.fn()}
+          onMuteToggle={vi.fn()}
           onSave={vi.fn()}
           onShare={vi.fn()}
         />
@@ -57,5 +59,50 @@ describe("ShortsActionRail", () => {
     expect(screen.getByRole("link", { name: /series info/i }).getAttribute("href")).toBe(
       "/series/series-1",
     );
+  });
+
+  it("toggles mute from the action rail", () => {
+    const onMuteToggle = vi.fn();
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <ShortsActionRail
+          episode={episode}
+          series={series}
+          liked={false}
+          saved={false}
+          followed={false}
+          muted
+          onFollow={vi.fn()}
+          onLike={vi.fn()}
+          onMuteToggle={onMuteToggle}
+          onSave={vi.fn()}
+          onShare={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /unmute video/i }));
+    expect(onMuteToggle).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <MemoryRouter>
+        <ShortsActionRail
+          episode={episode}
+          series={series}
+          liked={false}
+          saved={false}
+          followed={false}
+          muted={false}
+          onFollow={vi.fn()}
+          onLike={vi.fn()}
+          onMuteToggle={onMuteToggle}
+          onSave={vi.fn()}
+          onShare={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("button", { name: /mute video/i })).toBeTruthy();
   });
 });

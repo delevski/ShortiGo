@@ -57,6 +57,8 @@ const shortsFeedMock = vi.hoisted(() => ({
         episodes: unknown[];
         error: Error | null;
         loading: boolean;
+        patchEpisode: (episodeId: string, patch: Partial<Episode>) => void;
+        patchSeries: (seriesId: string, patch: Partial<Series>) => void;
         reload: () => Promise<void>;
         seriesById: Map<string, unknown>;
       }

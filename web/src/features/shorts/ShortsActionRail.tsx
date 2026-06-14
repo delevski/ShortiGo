@@ -1,4 +1,4 @@
-import { Bookmark, Heart, Info, Send, UserPlus } from "lucide-react";
+import { Bookmark, Heart, Info, Send, UserPlus, Volume2, VolumeX } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import type { Episode, Series } from "../../domain/types";
@@ -8,8 +8,10 @@ type ShortsActionRailProps = {
   episode: Episode;
   followed: boolean;
   liked: boolean;
+  muted: boolean;
   onFollow: () => void;
   onLike: () => void;
+  onMuteToggle: () => void;
   onSave: () => void;
   onShare: () => void;
   saved: boolean;
@@ -20,8 +22,10 @@ export function ShortsActionRail({
   episode,
   followed,
   liked,
+  muted,
   onFollow,
   onLike,
+  onMuteToggle,
   onSave,
   onShare,
   saved,
@@ -69,6 +73,13 @@ export function ShortsActionRail({
         icon={<Send aria-hidden="true" size={23} />}
         onClick={onShare}
       />
+
+      <RailButton
+        active={!muted}
+        ariaLabel={muted ? "Unmute video" : "Mute video"}
+        icon={muted ? <VolumeX aria-hidden="true" size={24} /> : <Volume2 aria-hidden="true" size={24} />}
+        onClick={onMuteToggle}
+      />
     </aside>
   );
 }
@@ -76,7 +87,7 @@ export function ShortsActionRail({
 type RailButtonProps = {
   active?: boolean;
   ariaLabel: string;
-  count: number;
+  count?: number;
   icon: ReactNode;
   onClick: () => void;
 };
@@ -91,7 +102,7 @@ function RailButton({ active = false, ariaLabel, count, icon, onClick }: RailBut
       aria-pressed={active}
     >
       <span className="shorts-rail-button__icon">{icon}</span>
-      <span>{compactCount(count)}</span>
+      {count !== undefined ? <span>{compactCount(count)}</span> : null}
     </button>
   );
 }

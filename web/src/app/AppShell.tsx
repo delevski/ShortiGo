@@ -1,6 +1,7 @@
 import {
   Compass,
   Flame,
+  Gift,
   Home,
   LogIn,
   LogOut,
@@ -19,7 +20,10 @@ const navItems = [
   { to: "/", label: "For You", icon: Home },
   { to: "/explore", label: "Explore", icon: Compass },
   { to: "/trending", label: "Trending", icon: Flame },
-  { to: "/library", label: "Library", icon: PlaySquare },
+  { to: "/following", label: "Following", icon: Sparkles },
+  { to: "/rewards", label: "Rewards", icon: Gift },
+  { to: "/my-list", label: "My List", icon: PlaySquare },
+  { to: "/profile", label: "Profile", icon: UserRound },
 ];
 
 function ShellNav({ compact = false }: { compact?: boolean }) {

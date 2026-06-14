@@ -1,14 +1,20 @@
-import { Lock, Play, Wallet } from "lucide-react";
+import { Play } from "lucide-react";
 import { Route, Routes } from "react-router-dom";
 import { AppShell } from "./app/AppShell";
 import { AuthProvider } from "./app/AuthContext";
 import { RequireAuth } from "./app/RequireAuth";
 import { EmptyView } from "./components/EmptyView";
 import { ToastProvider } from "./components/Toast";
+import { LoginPage } from "./features/auth/LoginPage";
 import { DiscoverPage } from "./features/discover/DiscoverPage";
+import { FollowingPage } from "./features/my-list/FollowingPage";
+import { MyListPage } from "./features/my-list/MyListPage";
+import { ProfilePage } from "./features/profile/ProfilePage";
+import { RewardsPage } from "./features/rewards/RewardsPage";
 import { EpisodeRoutePage } from "./features/series/EpisodeRoutePage";
 import { SeriesDetailPage } from "./features/series/SeriesDetailPage";
 import { ShortsPage } from "./features/shorts/ShortsPage";
+import { SubscribePage } from "./features/subscription/SubscribePage";
 
 function TrendingScreen() {
   return (
@@ -16,26 +22,6 @@ function TrendingScreen() {
       <Play aria-hidden="true" size={28} />
       <h1>Trending</h1>
       <p>The next hot queue will land here without changing the shell.</p>
-    </section>
-  );
-}
-
-function LibraryScreen() {
-  return (
-    <section className="route-panel">
-      <Lock aria-hidden="true" size={28} />
-      <h1>Library</h1>
-      <p>Saved, unlocked, and followed series will be protected behind auth.</p>
-    </section>
-  );
-}
-
-function WalletScreen() {
-  return (
-    <section className="route-panel">
-      <Wallet aria-hidden="true" size={28} />
-      <h1>Wallet</h1>
-      <p>Coins, bonus balance, and transactions will appear here.</p>
     </section>
   );
 }
@@ -49,14 +35,17 @@ export function App() {
             <Route path="/" element={<ShortsPage />} />
             <Route path="/shorts" element={<ShortsPage />} />
             <Route path="/explore" element={<DiscoverPage />} />
+            <Route path="/discover" element={<DiscoverPage />} />
             <Route path="/series/:seriesId" element={<SeriesDetailPage />} />
             <Route path="/series/:seriesId/episodes/:episodeId" element={<EpisodeRoutePage />} />
             <Route path="/trending" element={<TrendingScreen />} />
+            <Route path="/following" element={<FollowingPage />} />
+            <Route path="/rewards" element={<RewardsPage />} />
             <Route
-              path="/library"
+              path="/my-list"
               element={
                 <RequireAuth>
-                  <LibraryScreen />
+                  <MyListPage />
                 </RequireAuth>
               }
             />
@@ -64,10 +53,13 @@ export function App() {
               path="/wallet"
               element={
                 <RequireAuth>
-                  <WalletScreen />
+                  <ProfilePage />
                 </RequireAuth>
               }
             />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/subscribe" element={<SubscribePage />} />
             <Route path="*" element={<EmptyView title="Nothing here yet" message="Try For You or Explore." />} />
           </Routes>
         </AppShell>

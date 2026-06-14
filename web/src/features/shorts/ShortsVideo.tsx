@@ -6,14 +6,25 @@ import { ShortsProgressBar } from "./ShortsProgressBar";
 type ShortsVideoProps = {
   active: boolean;
   episode: Episode;
+  muted?: boolean;
   unlocked: boolean;
 };
 
-export function ShortsVideo({ active, episode, unlocked }: ShortsVideoProps) {
+export function ShortsVideo({ active, episode, muted = true, unlocked }: ShortsVideoProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [isLandscape, setIsLandscape] = useState(false);
+  const [landscapeEpisodeId, setLandscapeEpisodeId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLandscapeEpisodeId(null);
+  }, [episode.id]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = muted;
+  }, [muted]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -35,10 +46,6 @@ export function ShortsVideo({ active, episode, unlocked }: ShortsVideoProps) {
     void play();
   }, [active, unlocked, episode.id]);
 
-  useEffect(() => {
-    setIsLandscape(false);
-  }, [episode.id]);
-
   const handleToggle = () => {
     const video = videoRef.current;
     if (!video || !unlocked) return;
@@ -51,8 +58,10 @@ export function ShortsVideo({ active, episode, unlocked }: ShortsVideoProps) {
   };
 
   const handleLoadedMetadata = (video: HTMLVideoElement) => {
-    setIsLandscape(video.videoWidth > video.videoHeight);
+    const landscape = video.videoWidth > video.videoHeight;
+    setLandscapeEpisodeId(landscape ? episode.id : null);
   };
+  const isLandscape = landscapeEpisodeId === episode.id;
 
   return (
     <div className="shorts-video-shell">
@@ -63,12 +72,13 @@ export function ShortsVideo({ active, episode, unlocked }: ShortsVideoProps) {
         aria-label={playing ? "Pause episode" : "Play episode"}
       >
         <video
+          aria-label={`Episode ${episode.order} video`}
           ref={videoRef}
           src={episode.videoUrl}
           poster={episode.thumbnailUrl}
           playsInline
           loop
-          muted
+          muted={muted}
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
           onLoadedMetadata={(event) => handleLoadedMetadata(event.currentTarget)}

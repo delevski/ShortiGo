@@ -38,7 +38,14 @@ export function SeriesDetailPage() {
 
     Promise.all([fetchSeriesById(db, seriesId), fetchEpisodesBySeriesId(db, seriesId)])
       .then(([series, episodes]) => {
-        if (active) setState({ episodes, error: null, loading: false, series });
+        if (active) {
+          setState({
+            episodes: series?.isPublished ? episodes : [],
+            error: null,
+            loading: false,
+            series: series?.isPublished ? series : null,
+          });
+        }
       })
       .catch((error: unknown) => {
         if (active) {
