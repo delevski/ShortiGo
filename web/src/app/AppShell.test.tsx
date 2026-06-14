@@ -6,6 +6,7 @@ import { AuthProvider } from "./AuthContext";
 import { ToastProvider } from "../components/Toast";
 
 type AuthCallback = (user: { uid: string; displayName: string | null } | null) => void;
+type AuthErrorCallback = (error: Error) => void;
 type WatchAppUser = (
   db: unknown,
   uid: string,
@@ -15,6 +16,7 @@ type WatchAppUser = (
 
 const authMocks = vi.hoisted(() => ({
   authCallback: undefined as AuthCallback | undefined,
+  authErrorCallback: undefined as AuthErrorCallback | undefined,
   authUnsubscribe: vi.fn(),
   ensureResolvers: [] as Array<() => void>,
   ensureUserDoc: vi.fn(
@@ -28,10 +30,13 @@ const authMocks = vi.hoisted(() => ({
 
 vi.mock("firebase/auth", () => ({
   GoogleAuthProvider: vi.fn(),
-  onAuthStateChanged: vi.fn((_auth, callback: AuthCallback) => {
+  onAuthStateChanged: vi.fn(
+    (_auth, callback: AuthCallback, errorCallback: AuthErrorCallback) => {
     authMocks.authCallback = callback;
+      authMocks.authErrorCallback = errorCallback;
     return authMocks.authUnsubscribe;
-  }),
+    },
+  ),
   signInWithPopup: vi.fn(),
   signOut: vi.fn(),
 }));
@@ -50,6 +55,7 @@ vi.mock("../repositories/userRepository", () => ({
 describe("AppShell", () => {
   beforeEach(() => {
     authMocks.authCallback = undefined;
+    authMocks.authErrorCallback = undefined;
     authMocks.authUnsubscribe.mockClear();
     authMocks.ensureResolvers.length = 0;
     authMocks.ensureUserDoc.mockClear();
@@ -105,5 +111,27 @@ describe("AppShell", () => {
 
     expect(authMocks.watchAppUser).toHaveBeenCalledTimes(1);
     expect(authMocks.watchAppUser.mock.calls[0][1]).toBe("second-user");
+  });
+
+  it("does not attach a stale app-user listener after an auth error", async () => {
+    render(
+      <MemoryRouter>
+        <AuthProvider>
+          <ToastProvider>
+            <AppShell>
+              <h1>Feed preview</h1>
+            </AppShell>
+          </ToastProvider>
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+
+    authMocks.authCallback?.({ uid: "first-user", displayName: "First" });
+    authMocks.authErrorCallback?.(new Error("Auth listener failed"));
+
+    authMocks.ensureResolvers[0]?.();
+    await Promise.resolve();
+
+    expect(authMocks.watchAppUser).not.toHaveBeenCalled();
   });
 });

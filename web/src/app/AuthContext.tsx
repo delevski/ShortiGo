@@ -99,6 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
       },
       (authError) => {
+        authSequence += 1;
         clearAppUserSubscription();
         setError(authError);
         setAuthUser(null);
