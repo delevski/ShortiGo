@@ -446,17 +446,30 @@ button:disabled {
 }
 
 .shorts-stage {
+  --video-aspect-w: 9;
+  --video-aspect-h: 16;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: calc(100vh - 144px);
 }
 
+.shorts-frame {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+
 .shorts-card {
   position: relative;
   overflow: hidden;
-  aspect-ratio: 9 / 16;
-  height: min(calc(100vh - 122px), calc((100vw - 320px) * 16 / 9));
+  flex: 0 0 auto;
+  --shorts-avail-w: calc(min(1180px, 100vw - 248px) - 48px - 88px);
+  aspect-ratio: var(--video-aspect-w) / var(--video-aspect-h);
+  height: min(
+    calc(100vh - 122px),
+    calc(var(--shorts-avail-w) * var(--video-aspect-h) / var(--video-aspect-w))
+  );
   max-height: calc(100vh - 122px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
@@ -498,7 +511,7 @@ button:disabled {
 }
 
 .shorts-video-button--landscape video {
-  object-fit: contain;
+  object-fit: cover;
   background: #050308;
 }
 
@@ -638,7 +651,7 @@ button:disabled {
 
 .shorts-info {
   position: absolute;
-  right: 86px;
+  right: 0;
   bottom: 18px;
   left: 0;
   z-index: 3;
@@ -679,13 +692,12 @@ button:disabled {
 }
 
 .shorts-action-rail {
-  position: absolute;
-  right: 10px;
-  bottom: 20px;
-  z-index: 6;
+  flex: 0 0 auto;
+  align-self: flex-end;
   display: grid;
   gap: 14px;
   justify-items: center;
+  padding-bottom: 4px;
 }
 
 .shorts-avatar-button,
@@ -696,9 +708,9 @@ button:disabled {
 
 .shorts-avatar-button {
   position: relative;
-  width: 50px;
-  height: 50px;
-  border: 2px solid rgba(255, 255, 255, 0.7);
+  width: 58px;
+  height: 58px;
+  border: 2px solid rgba(255, 255, 255, 0.36);
   border-radius: 999px;
   background: var(--surface-elevated);
   padding: 0;
@@ -738,25 +750,24 @@ button:disabled {
   display: grid;
   gap: 5px;
   justify-items: center;
-  width: 58px;
+  width: 64px;
   border: 0;
   background: transparent;
   padding: 0;
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   font-weight: 900;
   line-height: 1;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
 }
 
 .shorts-rail-button__icon,
 .shorts-rail-link svg {
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
+  width: 50px;
+  height: 50px;
   border-radius: 999px;
-  background: rgba(5, 3, 8, 0.45);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32);
+  background: rgba(255, 255, 255, 0.11);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.26);
 }
 
 .shorts-rail-button--active {
@@ -1408,9 +1419,17 @@ button:disabled {
     align-items: stretch;
   }
 
-  .shorts-card {
+  .shorts-frame {
+    position: relative;
     width: 100%;
     height: calc(100vh - 66px - 76px);
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .shorts-card {
+    width: 100%;
+    height: 100%;
     max-height: none;
     aspect-ratio: auto;
     border: 0;
@@ -1419,9 +1438,13 @@ button:disabled {
   }
 
   .shorts-action-rail {
+    position: absolute;
     right: 9px;
     bottom: 24px;
+    z-index: 6;
+    align-self: auto;
     gap: 10px;
+    padding-bottom: 0;
   }
 
   .shorts-avatar-button {
@@ -1433,12 +1456,14 @@ button:disabled {
   .shorts-rail-link {
     width: 54px;
     color: var(--text);
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
   }
 
   .shorts-rail-button__icon,
   .shorts-rail-link svg {
     width: 42px;
     height: 42px;
+    background: rgba(5, 3, 8, 0.46);
   }
 
   .shorts-info {

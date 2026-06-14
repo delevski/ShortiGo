@@ -7,10 +7,17 @@ type ShortsVideoProps = {
   active: boolean;
   episode: Episode;
   muted?: boolean;
+  onAspectRatio?: (ratio: { width: number; height: number }) => void;
   unlocked: boolean;
 };
 
-export function ShortsVideo({ active, episode, muted = true, unlocked }: ShortsVideoProps) {
+export function ShortsVideo({
+  active,
+  episode,
+  muted = true,
+  onAspectRatio,
+  unlocked,
+}: ShortsVideoProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -60,6 +67,9 @@ export function ShortsVideo({ active, episode, muted = true, unlocked }: ShortsV
   const handleLoadedMetadata = (video: HTMLVideoElement) => {
     const landscape = video.videoWidth > video.videoHeight;
     setLandscapeEpisodeId(landscape ? episode.id : null);
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+      onAspectRatio?.({ width: video.videoWidth, height: video.videoHeight });
+    }
   };
   const isLandscape = landscapeEpisodeId === episode.id;
 

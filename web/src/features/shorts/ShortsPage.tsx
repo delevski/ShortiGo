@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type WheelEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type WheelEvent,
+} from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/AuthContext";
 import { EmptyView } from "../../components/EmptyView";
@@ -29,6 +37,7 @@ export function ShortsPage() {
   const [searchParams] = useSearchParams();
   const [index, setIndex] = useState(0);
   const [muted, setMuted] = useState(true);
+  const [aspect, setAspect] = useState({ width: 9, height: 16 });
   const appliedDeepLinkRef = useRef<string | null>(null);
   const pendingWalletNavigationRef = useRef(false);
   const lastWheelAtRef = useRef(0);
@@ -111,6 +120,15 @@ export function ShortsPage() {
     }
     return authUser.uid;
   }, [authUser, showToast]);
+
+  const handleAspectRatio = useCallback((ratio: { width: number; height: number }) => {
+    setAspect(ratio);
+  }, []);
+
+  const activeEpisodeId = feedItems[index]?.episode.id;
+  useEffect(() => {
+    setAspect({ width: 9, height: 16 });
+  }, [activeEpisodeId]);
 
   const handleLogin = async () => {
     if (!configReady) {
@@ -261,25 +279,43 @@ export function ShortsPage() {
     }
   };
 
+  const stageStyle = {
+    "--video-aspect-w": String(aspect.width),
+    "--video-aspect-h": String(aspect.height),
+  } as CSSProperties;
+
   return (
-    <section className="shorts-stage" aria-label="For You shorts" onWheel={handleWheel}>
-      <div className="shorts-card">
-        <ShortsVideo active episode={episode} muted={muted} unlocked={unlocked} />
-        <LockedEpisodeOverlay
-          access={access}
-          onLogin={handleLogin}
-          onSubscribe={() => {
-            if (!authUser) {
-              if (configReady) pendingWalletNavigationRef.current = true;
-              void handleLogin();
-              return;
-            }
-            showToast("VIP subscriptions will be handled from the wallet.", "info");
-            navigate("/wallet");
-          }}
-          onUnlock={() => showToast("Episode unlocks are coming in the rewards task.", "info")}
-        />
-        <ShortsInfoPanel episode={episode} series={series} />
+    <section
+      className="shorts-stage"
+      style={stageStyle}
+      aria-label="For You shorts"
+      onWheel={handleWheel}
+    >
+      <div className="shorts-frame">
+        <div className="shorts-card">
+          <ShortsVideo
+            active
+            episode={episode}
+            muted={muted}
+            onAspectRatio={handleAspectRatio}
+            unlocked={unlocked}
+          />
+          <LockedEpisodeOverlay
+            access={access}
+            onLogin={handleLogin}
+            onSubscribe={() => {
+              if (!authUser) {
+                if (configReady) pendingWalletNavigationRef.current = true;
+                void handleLogin();
+                return;
+              }
+              showToast("VIP subscriptions will be handled from the wallet.", "info");
+              navigate("/wallet");
+            }}
+            onUnlock={() => showToast("Episode unlocks are coming in the rewards task.", "info")}
+          />
+          <ShortsInfoPanel episode={episode} series={series} />
+        </div>
         <ShortsActionRail
           episode={episode}
           followed={followed}
