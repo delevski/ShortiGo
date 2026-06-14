@@ -7,6 +7,8 @@ type ShortsFeedState = {
   episodes: Episode[];
   error: Error | null;
   loading: boolean;
+  patchEpisode: (episodeId: string, patch: Partial<Episode>) => void;
+  patchSeries: (seriesId: string, patch: Partial<Series>) => void;
   reload: () => Promise<void>;
   seriesById: Map<string, Series>;
 };
@@ -16,6 +18,18 @@ export function useShortsFeed(): ShortsFeedState {
   const [series, setSeries] = useState<Series[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+
+  const patchEpisode = useCallback((episodeId: string, patch: Partial<Episode>) => {
+    setEpisodes((current) =>
+      current.map((episode) => (episode.id === episodeId ? { ...episode, ...patch } : episode)),
+    );
+  }, []);
+
+  const patchSeries = useCallback((seriesId: string, patch: Partial<Series>) => {
+    setSeries((current) =>
+      current.map((item) => (item.id === seriesId ? { ...item, ...patch } : item)),
+    );
+  }, []);
 
   const reload = useCallback(async () => {
     const configuredDb = db;
@@ -55,5 +69,5 @@ export function useShortsFeed(): ShortsFeedState {
     [series],
   );
 
-  return { episodes, error, loading, reload, seriesById };
+  return { episodes, error, loading, patchEpisode, patchSeries, reload, seriesById };
 }

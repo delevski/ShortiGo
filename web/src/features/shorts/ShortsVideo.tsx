@@ -13,6 +13,7 @@ export function ShortsVideo({ active, episode, unlocked }: ShortsVideoProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isLandscape, setIsLandscape] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -34,6 +35,10 @@ export function ShortsVideo({ active, episode, unlocked }: ShortsVideoProps) {
     void play();
   }, [active, unlocked, episode.id]);
 
+  useEffect(() => {
+    setIsLandscape(false);
+  }, [episode.id]);
+
   const handleToggle = () => {
     const video = videoRef.current;
     if (!video || !unlocked) return;
@@ -45,10 +50,14 @@ export function ShortsVideo({ active, episode, unlocked }: ShortsVideoProps) {
     video.pause();
   };
 
+  const handleLoadedMetadata = (video: HTMLVideoElement) => {
+    setIsLandscape(video.videoWidth > video.videoHeight);
+  };
+
   return (
     <div className="shorts-video-shell">
       <button
-        className="shorts-video-button"
+        className={`shorts-video-button${isLandscape ? " shorts-video-button--landscape" : ""}`}
         type="button"
         onClick={handleToggle}
         aria-label={playing ? "Pause episode" : "Play episode"}
@@ -62,6 +71,7 @@ export function ShortsVideo({ active, episode, unlocked }: ShortsVideoProps) {
           muted
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
+          onLoadedMetadata={(event) => handleLoadedMetadata(event.currentTarget)}
           onTimeUpdate={(event) => {
             const video = event.currentTarget;
             setProgress(video.duration ? video.currentTime / video.duration : 0);

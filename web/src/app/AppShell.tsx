@@ -10,6 +10,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
+import { formatAuthError } from "../shared/authErrors";
 import { useAuth } from "./AuthContext";
 import { ShortiGoLogo } from "../components/ShortiGoLogo";
 import { useToast } from "../components/Toast";
@@ -61,7 +62,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       await loginWithGoogle();
       showToast("Welcome to ShortiGo.", "success");
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Authentication failed.", "error");
+      showToast(formatAuthError(error), "error");
     }
   };
 

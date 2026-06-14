@@ -27,8 +27,6 @@ export function ShortsActionRail({
   saved,
   series,
 }: ShortsActionRailProps) {
-  const shortUrl = `/shorts?series=${encodeURIComponent(series.id)}&episode=${encodeURIComponent(episode.id)}`;
-
   return (
     <aside className="shorts-action-rail" aria-label="Short actions">
       <button
@@ -52,7 +50,7 @@ export function ShortsActionRail({
         onClick={onLike}
       />
 
-      <Link className="shorts-rail-link" to={shortUrl} aria-label="Series info">
+      <Link className="shorts-rail-link" to={`/series/${series.id}`} aria-label="Series info">
         <Info aria-hidden="true" size={24} />
         <span>Info</span>
       </Link>

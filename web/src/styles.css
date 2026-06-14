@@ -100,7 +100,7 @@ button:disabled {
   flex: 0 0 auto;
   place-items: center;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 22%;
   background: var(--surface-elevated);
   box-shadow: 0 12px 34px rgba(139, 92, 246, 0.24);
 }
@@ -498,6 +498,11 @@ button:disabled {
 .shorts-video-button video {
   display: block;
   object-fit: cover;
+}
+
+.shorts-video-button--landscape video {
+  object-fit: contain;
+  background: #050308;
 }
 
 .shorts-video-button__play {

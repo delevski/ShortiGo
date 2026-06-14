@@ -65,8 +65,10 @@ const shortsFeedMock = vi.hoisted(() => ({
     episodes: [episodeOne, episodeTwo],
     error: null,
     loading: false,
-    reload: vi.fn(),
-    seriesById: new Map([
+        reload: vi.fn(),
+        patchEpisode: vi.fn(),
+        patchSeries: vi.fn(),
+        seriesById: new Map([
       [seriesOne.id, seriesOne],
       [seriesTwo.id, seriesTwo],
     ]),
@@ -107,8 +109,10 @@ describe("ShortsPage", () => {
           episodes: [episodeOne, episodeTwo],
           error: null,
           loading: false,
-          reload: vi.fn(),
-          seriesById: new Map([
+        reload: vi.fn(),
+        patchEpisode: vi.fn(),
+        patchSeries: vi.fn(),
+        seriesById: new Map([
             [seriesOne.id, seriesOne],
             [seriesTwo.id, seriesTwo],
           ]),
@@ -161,8 +165,10 @@ describe("ShortsPage", () => {
       episodes: [{ ...episodeOne, isVipLocked: true }],
       error: null,
       loading: false,
-      reload: vi.fn(),
-      seriesById: new Map([[seriesOne.id, { ...seriesOne, isVip: true }]]),
+        reload: vi.fn(),
+        patchEpisode: vi.fn(),
+        patchSeries: vi.fn(),
+        seriesById: new Map([[seriesOne.id, { ...seriesOne, isVip: true }]]),
     };
     window.history.pushState(null, "", "/shorts");
 

@@ -13,7 +13,8 @@ import {
   setSeriesSaved,
 } from "../../repositories/socialRepository";
 import { episodeAccess } from "../../shared/access";
-import { episodeShareText } from "../../shared/share";
+import { episodeShareText, episodeShareUrl } from "../../shared/share";
+import { formatAuthError } from "../../shared/authErrors";
 import { LockedEpisodeOverlay } from "./LockedEpisodeOverlay";
 import { ShortsActionRail } from "./ShortsActionRail";
 import { ShortsInfoPanel } from "./ShortsInfoPanel";
@@ -22,7 +23,7 @@ import { useShortsFeed } from "./useShortsFeed";
 
 export function ShortsPage() {
   const { appUser, authUser, configReady, loginWithGoogle } = useAuth();
-  const { episodes, error, loading, reload, seriesById } = useShortsFeed();
+  const { episodes, error, loading, patchEpisode, patchSeries, reload, seriesById } = useShortsFeed();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -109,7 +110,7 @@ export function ShortsPage() {
       await loginWithGoogle();
       showToast("Welcome to ShortiGo.", "success");
     } catch (loginError) {
-      showToast(loginError instanceof Error ? loginError.message : "Login failed.", "error");
+      showToast(formatAuthError(loginError), "error");
     }
   };
 
@@ -156,10 +157,12 @@ export function ShortsPage() {
     const userId = requireUser();
     if (!userId || !db) return;
 
+    const nextLiked = !liked;
     try {
-      await setEpisodeLiked(db, userId, episode.id, !liked);
-      await reload();
-      showToast(liked ? "Removed like." : "Liked episode.", "success");
+      await setEpisodeLiked(db, userId, episode.id, nextLiked);
+      patchEpisode(episode.id, {
+        likeCount: Math.max(0, episode.likeCount + (nextLiked ? 1 : -1)),
+      });
     } catch (likeError) {
       showToast(likeError instanceof Error ? likeError.message : "Unable to update like.", "error");
     }
@@ -169,10 +172,12 @@ export function ShortsPage() {
     const userId = requireUser();
     if (!userId || !db) return;
 
+    const nextSaved = !saved;
     try {
-      await setSeriesSaved(db, userId, series.id, !saved);
-      await reload();
-      showToast(saved ? "Removed from saved." : "Series saved.", "success");
+      await setSeriesSaved(db, userId, series.id, nextSaved);
+      patchSeries(series.id, {
+        saveCount: Math.max(0, series.saveCount + (nextSaved ? 1 : -1)),
+      });
     } catch (saveError) {
       showToast(saveError instanceof Error ? saveError.message : "Unable to update saved series.", "error");
     }
@@ -182,17 +187,25 @@ export function ShortsPage() {
     const userId = requireUser();
     if (!userId || !db) return;
 
+    const nextFollowed = !followed;
     try {
-      await setSeriesFollowed(db, userId, series.id, !followed);
-      await reload();
-      showToast(followed ? "Unfollowed series." : "Following series.", "success");
+      await setSeriesFollowed(db, userId, series.id, nextFollowed);
+      patchSeries(series.id, {
+        followerCount: Math.max(0, series.followerCount + (nextFollowed ? 1 : -1)),
+      });
     } catch (followError) {
       showToast(followError instanceof Error ? followError.message : "Unable to update follow.", "error");
     }
   };
 
   const shareEpisode = async () => {
-    const text = episodeShareText({
+    const shareUrl = episodeShareUrl({
+      episodeId: episode.id,
+      origin: publicOrigin,
+      route: "shorts",
+      seriesId: series.id,
+    });
+    const shareText = episodeShareText({
       episodeId: episode.id,
       episodeOrder: episode.order,
       origin: publicOrigin,
@@ -203,18 +216,35 @@ export function ShortsPage() {
 
     try {
       if (navigator.share) {
-        await navigator.share({ text, title: series.title });
-      } else {
-        await navigator.clipboard.writeText(text);
+        await navigator.share({ title: series.title, text: shareText, url: shareUrl });
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareText);
         showToast("Share link copied.", "success");
+      } else {
+        showToast(shareText, "info");
+        return;
       }
 
-      if (db) {
-        await recordEpisodeShare(db, episode.id);
-        await reload();
+      if (db && authUser) {
+        void recordEpisodeShare(db, episode.id)
+          .then(() => {
+            patchEpisode(episode.id, { shareCount: episode.shareCount + 1 });
+          })
+          .catch(() => undefined);
       }
     } catch (shareError) {
       if (shareError instanceof DOMException && shareError.name === "AbortError") return;
+
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(shareText);
+          showToast("Share link copied.", "success");
+          return;
+        }
+      } catch {
+        // Fall through to the error toast below.
+      }
+
       showToast(shareError instanceof Error ? shareError.message : "Unable to share episode.", "error");
     }
   };
