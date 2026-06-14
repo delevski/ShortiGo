@@ -1,21 +1,14 @@
-import { Lock, Play, Search, Wallet } from "lucide-react";
+import { Lock, Play, Wallet } from "lucide-react";
 import { Route, Routes } from "react-router-dom";
 import { AppShell } from "./app/AppShell";
 import { AuthProvider } from "./app/AuthContext";
 import { RequireAuth } from "./app/RequireAuth";
 import { EmptyView } from "./components/EmptyView";
 import { ToastProvider } from "./components/Toast";
+import { DiscoverPage } from "./features/discover/DiscoverPage";
+import { EpisodeRoutePage } from "./features/series/EpisodeRoutePage";
+import { SeriesDetailPage } from "./features/series/SeriesDetailPage";
 import { ShortsPage } from "./features/shorts/ShortsPage";
-
-function ExploreScreen() {
-  return (
-    <section className="route-panel">
-      <Search aria-hidden="true" size={28} />
-      <h1>Explore</h1>
-      <p>Browse categories, trending shorts, and creator collections from here.</p>
-    </section>
-  );
-}
 
 function TrendingScreen() {
   return (
@@ -55,7 +48,9 @@ export function App() {
           <Routes>
             <Route path="/" element={<ShortsPage />} />
             <Route path="/shorts" element={<ShortsPage />} />
-            <Route path="/explore" element={<ExploreScreen />} />
+            <Route path="/explore" element={<DiscoverPage />} />
+            <Route path="/series/:seriesId" element={<SeriesDetailPage />} />
+            <Route path="/series/:seriesId/episodes/:episodeId" element={<EpisodeRoutePage />} />
             <Route path="/trending" element={<TrendingScreen />} />
             <Route
               path="/library"
