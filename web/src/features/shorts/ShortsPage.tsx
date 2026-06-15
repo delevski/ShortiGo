@@ -5,7 +5,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type WheelEvent,
 } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/AuthContext";
@@ -41,6 +40,7 @@ export function ShortsPage() {
   const appliedDeepLinkRef = useRef<string | null>(null);
   const pendingWalletNavigationRef = useRef(false);
   const lastWheelAtRef = useRef(0);
+  const stageRef = useRef<HTMLElement | null>(null);
   const requestedSeriesId = searchParams.get("series");
   const requestedEpisodeId = searchParams.get("episode");
 
@@ -79,16 +79,66 @@ export function ShortsPage() {
     [feedItems.length],
   );
 
-  const handleWheel = useCallback(
-    (event: WheelEvent<HTMLElement>) => {
-      if (Math.abs(event.deltaY) < 36) return;
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const handleWheel = (event: globalThis.WheelEvent) => {
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      event.preventDefault();
+      if (Math.abs(event.deltaY) < 24) return;
       const now = Date.now();
       if (now - lastWheelAtRef.current < 420) return;
       lastWheelAtRef.current = now;
       move(event.deltaY > 0 ? 1 : -1);
-    },
-    [move],
-  );
+    };
+
+    let startY = 0;
+    let startX = 0;
+    let tracking = false;
+
+    const handleTouchStart = (event: TouchEvent) => {
+      if (event.touches.length !== 1) {
+        tracking = false;
+        return;
+      }
+      startY = event.touches[0].clientY;
+      startX = event.touches[0].clientX;
+      tracking = true;
+    };
+
+    const handleTouchMove = (event: TouchEvent) => {
+      if (!tracking) return;
+      const deltaY = event.touches[0].clientY - startY;
+      const deltaX = event.touches[0].clientX - startX;
+      if (Math.abs(deltaY) > Math.abs(deltaX) && event.cancelable) {
+        event.preventDefault();
+      }
+    };
+
+    const handleTouchEnd = (event: TouchEvent) => {
+      if (!tracking) return;
+      tracking = false;
+      const touch = event.changedTouches[0];
+      if (!touch) return;
+      const deltaY = touch.clientY - startY;
+      const deltaX = touch.clientX - startX;
+      if (Math.abs(deltaY) < 48 || Math.abs(deltaY) <= Math.abs(deltaX)) return;
+      move(deltaY < 0 ? 1 : -1);
+    };
+
+    stage.addEventListener("wheel", handleWheel, { passive: false });
+    stage.addEventListener("touchstart", handleTouchStart, { passive: true });
+    stage.addEventListener("touchmove", handleTouchMove, { passive: false });
+    stage.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+    return () => {
+      stage.removeEventListener("wheel", handleWheel);
+      stage.removeEventListener("touchstart", handleTouchStart);
+      stage.removeEventListener("touchmove", handleTouchMove);
+      stage.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [move]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -289,7 +339,7 @@ export function ShortsPage() {
       className="shorts-stage"
       style={stageStyle}
       aria-label="For You shorts"
-      onWheel={handleWheel}
+      ref={stageRef}
     >
       <div className="shorts-frame">
         <div className="shorts-card">

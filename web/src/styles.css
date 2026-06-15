@@ -451,7 +451,10 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 144px);
+  height: calc(100vh - 144px);
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: contain;
 }
 
 .shorts-frame {
@@ -467,10 +470,10 @@ button:disabled {
   --shorts-avail-w: calc(min(1180px, 100vw - 248px) - 48px - 88px);
   aspect-ratio: var(--video-aspect-w) / var(--video-aspect-h);
   height: min(
-    calc(100vh - 122px),
+    calc(100vh - 144px),
     calc(var(--shorts-avail-w) * var(--video-aspect-h) / var(--video-aspect-w))
   );
-  max-height: calc(100vh - 122px);
+  max-height: calc(100vh - 144px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   background: #050308;
@@ -1315,7 +1318,7 @@ button:disabled {
   }
 
   .shorts-stage {
-    min-height: calc(100vh - 66px - 76px);
+    height: calc(100vh - 66px - 76px - 48px);
   }
 
   .series-detail-hero,
@@ -1415,7 +1418,7 @@ button:disabled {
 
   .shorts-stage {
     position: relative;
-    min-height: calc(100vh - 66px - 76px);
+    height: calc(100vh - 66px - 76px);
     align-items: stretch;
   }
 
