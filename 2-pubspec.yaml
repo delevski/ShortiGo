@@ -1,0 +1,86 @@
+
+name: shortigo
+description: Short-drama streaming app.
+publish_to: 'none'
+version: 0.1.0+3
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State / DI
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Routing
+  go_router: ^14.2.7
+
+  # Firebase
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+  firebase_storage: ^12.3.4
+  firebase_app_installations: ^0.3.1
+  firebase_performance: ^0.10.1+10
+
+  # Local cache
+  drift: ^2.20.2
+  sqlite3_flutter_libs: ^0.5.24
+  path_provider: ^2.1.4
+  path: ^1.9.0
+
+  # Models
+  freezed_annotation: ^3.1.0
+  json_annotation: ^4.9.0
+
+  # Video
+  visibility_detector: ^0.4.0+2
+  cached_network_image: ^3.4.1
+
+  # Monetization
+  google_mobile_ads: 5.1.0
+  purchases_flutter: ^10.10.1
+
+  # Observability
+  sentry_flutter: ^9.21.0
+  logger: ^2.4.0
+
+  # Auth
+  google_sign_in: ^6.2.1
+
+  # Util
+  rxdart: ^0.28.0
+  collection: ^1.18.0
+  better_player_plus: ^1.0.8
+  share_plus: ^13.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+  # Codegen
+  build_runner: ^2.4.13
+  freezed: ^3.1.0
+  json_serializable: ^6.8.0
+  riverpod_generator: 2.6.5
+  custom_lint: 0.7.5
+  riverpod_lint: 2.6.5
+
+  # Mocking / testing
+  mocktail: ^1.0.4
+  fake_cloud_firestore: ^3.0.1
+  drift_dev: ^2.20.3
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/branding/
+
