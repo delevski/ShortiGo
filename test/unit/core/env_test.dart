@@ -46,4 +46,107 @@ void main() {
       expect(env.hasReleaseBlockingIssues, isFalse);
     });
   });
+
+  group('Env RevenueCat release guard', () {
+    const goodAdMob = <String, String>{
+      'ios': 'ca-app-pub-1234567890123456~1111111111',
+      'android': 'ca-app-pub-1234567890123456~2222222222',
+    };
+
+    Env prod({
+      String ios = 'appl_abcdefghijklmnop',
+      String android = 'goog_abcdefghijklmnop',
+    }) {
+      return Env.fromValues(
+        flavor: AppFlavor.prod,
+        sentryDsn: 'https://public@example.ingest.sentry.io/123',
+        adMobAppIdIos: goodAdMob['ios']!,
+        adMobAppIdAndroid: goodAdMob['android']!,
+        adMobRewardedUnitIdIos: 'ca-app-pub-1234567890123456/3333333333',
+        adMobRewardedUnitIdAndroid: 'ca-app-pub-1234567890123456/4444444444',
+        revenueCatApiKeyIos: ios,
+        revenueCatApiKeyAndroid: android,
+        rewardApiBaseUrl: 'https://shortigo-rewards-api.example.workers.dev',
+      );
+    }
+
+    test('detects RevenueCat test keys case-insensitively', () {
+      expect(Env.isRevenueCatTestKey('test_RNabc'), isTrue);
+      expect(Env.isRevenueCatTestKey('  TEST_abc'), isTrue);
+      expect(Env.isRevenueCatTestKey('goog_abc'), isFalse);
+      expect(Env.isRevenueCatTestKey('appl_abc'), isFalse);
+      expect(Env.isRevenueCatTestKey(''), isFalse);
+    });
+
+    test('prod with an Android test key reports a release blocker', () {
+      final env = prod(android: 'test_RNabcdefghijkl');
+
+      expect(
+        env.releaseBlockingIssues,
+        contains('RC_API_KEY_ANDROID is a RevenueCat test key (test_...).'),
+      );
+      expect(env.hasReleaseBlockingIssues, isTrue);
+    });
+
+    test('prod with an iOS test key reports a release blocker', () {
+      final env = prod(ios: 'test_RNabcdefghijkl');
+
+      expect(
+        env.releaseBlockingIssues,
+        contains('RC_API_KEY_IOS is a RevenueCat test key (test_...).'),
+      );
+    });
+
+    test('prod never hands a test or empty key to RevenueCat', () {
+      final env = prod(ios: '', android: 'test_RNabcdefghijkl');
+
+      expect(env.safeRevenueCatKeyIos, isEmpty);
+      expect(env.safeRevenueCatKeyAndroid, isEmpty);
+      expect(
+        env.iapDisabledReasons,
+        <String>[
+          'RC_API_KEY_IOS is empty.',
+          'RC_API_KEY_ANDROID is a RevenueCat test key (test_...).',
+        ],
+      );
+    });
+
+    test('prod drops only the bad key and keeps the good one', () {
+      final env = prod(android: 'test_RNabcdefghijkl');
+
+      expect(env.safeRevenueCatKeyIos, 'appl_abcdefghijklmnop');
+      expect(env.safeRevenueCatKeyAndroid, isEmpty);
+    });
+
+    test('prod with valid keys passes them through and stays enabled', () {
+      final env = prod();
+
+      expect(env.safeRevenueCatKeyIos, 'appl_abcdefghijklmnop');
+      expect(env.safeRevenueCatKeyAndroid, 'goog_abcdefghijklmnop');
+      expect(env.iapDisabledReasons, isEmpty);
+      expect(env.releaseBlockingIssues, isEmpty);
+    });
+
+    test('release mode applies the guard even when ENV is not prod', () {
+      final env = Env.fromValues(
+        revenueCatApiKeyAndroid: 'test_RNabcdefghijkl',
+        releaseMode: true,
+      );
+
+      expect(env.isProd, isFalse);
+      expect(env.safeRevenueCatKeyAndroid, isEmpty);
+      expect(env.iapDisabledReasons, isNotEmpty);
+    });
+
+    test('dev debug builds may still use a test key', () {
+      final env = Env.fromValues(
+        revenueCatApiKeyAndroid: 'test_RNabcdefghijkl',
+        releaseMode: false,
+      );
+
+      expect(env.enforcesReleaseGuards, isFalse);
+      expect(env.safeRevenueCatKeyAndroid, 'test_RNabcdefghijkl');
+      expect(env.iapDisabledReasons, isEmpty);
+    });
+  });
 }

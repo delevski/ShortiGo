@@ -83,11 +83,28 @@ dart run build_runner build --delete-conflicting-outputs   # freezed / json / ri
 flutter run --dart-define=ENV=dev                          # defaults work without real keys
 ```
 
-For a production build, pass your own keys with `--dart-define` (names: `FIREBASE_PROJECT_ID`, `SENTRY_DSN`, `ADMOB_APP_ID_IOS`, `ADMOB_APP_ID_ANDROID`, `ADMOB_REWARDED_IOS`, `ADMOB_REWARDED_ANDROID`, `RC_API_KEY_IOS`, `RC_API_KEY_ANDROID`). `dart_defines.example.json` is a template and `lib/core/env/env.dart` lists every define.
+For a production build see [Release to Play](#release-to-play); in short, pass your own keys with `--dart-define` (names: `FIREBASE_PROJECT_ID`, `SENTRY_DSN`, `ADMOB_APP_ID_IOS`, `ADMOB_APP_ID_ANDROID`, `ADMOB_REWARDED_IOS`, `ADMOB_REWARDED_ANDROID`, `RC_API_KEY_IOS`, `RC_API_KEY_ANDROID`). `dart_defines.example.json` is a template and `lib/core/env/env.dart` lists every define.
 
 Tests: `flutter test` (unit and widget) and `flutter test integration_test`.
 
 Firestore rules and indexes deploy with `firebase deploy --only firestore:rules,firestore:indexes`.
+
+## Release to Play
+
+Release builds are guarded: the Android build **fails** if the RevenueCat key is empty or a `test_` key, if the AdMob IDs are Google's sample IDs, or if `android/key.properties` is missing. If something slips through anyway, the app turns purchases off instead of crashing.
+
+One-time setup on the Windows PC that holds the signing key:
+
+1. `android/key.properties` (copy from `key.properties.example`) and `android/app/upload-keystore.jks` - both stay local and git-ignored.
+2. `dart_defines.json` - copy `dart_defines.example.json`, or let the script create it. It is git-ignored and holds your real keys.
+
+Every release: double-click **`tools\release-android.cmd`** (or run it from the repo root). It will:
+
+- check `dart_defines.json` and ask you to paste the RevenueCat `goog_` key and the real AdMob IDs if they are missing or are test values (saved only to your local file);
+- check the signing files, bump the build number (`+N`) in `pubspec.yaml`, run `flutter pub get`, and build with `flutter build appbundle --release --dart-define-from-file=dart_defines.json`;
+- print the `.aab` path (`build\app\outputs\bundle\release\app-release.aab`) and open its folder.
+
+Then upload the `.aab` in Play Console > Production > Create new release, and commit the `pubspec.yaml` version bump. Never commit `dart_defines.json`, `key.properties` or the keystore.
 
 ## Status
 

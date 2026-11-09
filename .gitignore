@@ -27,6 +27,7 @@ coverage/
 
 # Secrets
 dart_defines.prod.json
+dart_defines.json
 **/.env
 **/.env.*
 !**/.env.example
