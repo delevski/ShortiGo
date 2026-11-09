@@ -49,12 +49,41 @@ Future<void> main() async {
         options.dsn = env.sentryDsn;
       });
     }
-    final iap = RevenueCatIapGateway();
-    await iap.initialize(
-      appleApiKey: env.revenueCatApiKeyIos,
-      googleApiKey: env.revenueCatApiKeyAndroid,
-    );
+    await _initializeIap();
   });
+}
+
+/// Configures RevenueCat only with keys that are safe for this build.
+///
+/// In prod/release builds an empty key or a RevenueCat test key (`test_...`)
+/// makes the SDK show "Wrong API Key" and close the app, so those keys are
+/// never passed on: purchases stay off and the rest of the app keeps running.
+Future<void> _initializeIap() async {
+  final reasons = env.iapDisabledReasons;
+  if (reasons.isNotEmpty) {
+    final message = 'In-app purchases disabled for this build: '
+        '${reasons.join(' ')}';
+    debugPrint(message);
+    if (env.sentryDsn.isNotEmpty) {
+      await Sentry.captureMessage(message, level: SentryLevel.error);
+    }
+  }
+  final appleKey = env.safeRevenueCatKeyIos;
+  final googleKey = env.safeRevenueCatKeyAndroid;
+  if (appleKey.isEmpty && googleKey.isEmpty) {
+    return;
+  }
+  try {
+    await RevenueCatIapGateway().initialize(
+      appleApiKey: appleKey,
+      googleApiKey: googleKey,
+    );
+  } catch (error, stackTrace) {
+    debugPrint('RevenueCat setup failed, purchases stay off: $error');
+    if (env.sentryDsn.isNotEmpty) {
+      await Sentry.captureException(error, stackTrace: stackTrace);
+    }
+  }
 }
 
 Future<void> _onAuthStateChanged(fb.User? user) async {

@@ -1,8 +1,10 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
+import '../../core/env/env.dart';
 import '../../domain/interfaces/iap_gateway.dart';
 
 class RevenueCatIapGateway implements IapGateway {
@@ -21,9 +23,21 @@ class RevenueCatIapGateway implements IapGateway {
     }
 
     final key = Platform.isIOS ? appleApiKey : googleApiKey;
-    final configuration = PurchasesConfiguration(key);
-    await Purchases.configure(configuration);
-    _initialized = true;
+    if (key.isEmpty) {
+      return;
+    }
+    // Last line of defence: a RevenueCat test key in a release build shows
+    // "Wrong API Key" and closes the app, so never configure with one.
+    if (kReleaseMode && Env.isRevenueCatTestKey(key)) {
+      debugPrint('RevenueCat test key ignored in a release build.');
+      return;
+    }
+    try {
+      await Purchases.configure(PurchasesConfiguration(key));
+      _initialized = true;
+    } on PlatformException catch (error) {
+      debugPrint('RevenueCat configure failed: ${error.message}');
+    }
   }
 
   @override

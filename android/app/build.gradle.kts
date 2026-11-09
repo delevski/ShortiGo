@@ -34,6 +34,42 @@ if (project.hasProperty("dart-defines")) {
 }
 val admobAppId = dartDefines["ADMOB_APP_ID_ANDROID"] ?: defaultAdMobAppId
 
+// Release guard: a release build that would crash on launch (RevenueCat test
+// key), ship Google's sample ad IDs, or be signed with the debug key fails
+// here, at build time, instead of being rejected by Google Play afterwards.
+// Set SHORTIGO_ALLOW_UNSAFE_RELEASE=1 only for throwaway smoke builds.
+val isReleaseBuild = gradle.startParameter.taskNames.any {
+    it.contains("release", ignoreCase = true)
+}
+if (isReleaseBuild && System.getenv("SHORTIGO_ALLOW_UNSAFE_RELEASE") != "1") {
+    val googleSampleAdMobPrefix = "ca-app-pub-3940256099942544"
+    val problems = mutableListOf<String>()
+    val rcKey = dartDefines["RC_API_KEY_ANDROID"].orEmpty().trim()
+    if (rcKey.isEmpty()) {
+        problems.add("RC_API_KEY_ANDROID is empty (use the RevenueCat goog_ public key).")
+    } else if (rcKey.lowercase().startsWith("test_")) {
+        problems.add("RC_API_KEY_ANDROID is a RevenueCat TEST key (test_...). The app would show 'Wrong API Key' and close. Use the goog_ key.")
+    }
+    val adMobAppIdValue = dartDefines["ADMOB_APP_ID_ANDROID"].orEmpty()
+    if (adMobAppIdValue.isEmpty() || adMobAppIdValue.startsWith(googleSampleAdMobPrefix)) {
+        problems.add("ADMOB_APP_ID_ANDROID is missing or Google's sample ID.")
+    }
+    val adMobRewardedValue = dartDefines["ADMOB_REWARDED_ANDROID"].orEmpty()
+    if (adMobRewardedValue.isEmpty() || adMobRewardedValue.startsWith(googleSampleAdMobPrefix)) {
+        problems.add("ADMOB_REWARDED_ANDROID is missing or Google's sample ad unit ID.")
+    }
+    if (!keystorePropertiesFile.exists()) {
+        problems.add("android/key.properties is missing: the bundle would be signed with the debug key and Google Play rejects it.")
+    }
+    if (problems.isNotEmpty()) {
+        throw GradleException(
+            "ShortiGo release build blocked:\n" +
+                problems.joinToString("\n") { " - $it" } +
+                "\nFix dart_defines.json / key.properties, or run tools\\release-android.cmd."
+        )
+    }
+}
+
 android {
     namespace = "com.shortigo.shortigo"
     compileSdk = flutter.compileSdkVersion
