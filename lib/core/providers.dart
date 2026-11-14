@@ -9,7 +9,6 @@ import '../data/firestore/episode_repository.dart';
 import '../data/firestore/series_repository.dart';
 import '../data/firestore/transaction_repository.dart';
 import '../data/firestore/user_repository.dart';
-import '../data/iap/revenuecat_iap_gateway.dart';
 import '../data/social/firestore_social_actions_gateway.dart';
 import '../data/rewards/firestore_reward_gateway.dart';
 import '../data/local/shortigo_database.dart';
@@ -18,7 +17,6 @@ import '../data/storage/firebase_video_source.dart';
 import '../domain/entities/user.dart';
 import '../domain/interfaces/ad_gateway.dart';
 import '../domain/interfaces/episode_repository.dart';
-import '../domain/interfaces/iap_gateway.dart';
 import '../domain/interfaces/reward_gateway.dart';
 import '../domain/interfaces/series_repository.dart';
 import '../domain/interfaces/social_actions_gateway.dart';
@@ -103,10 +101,6 @@ final rewardGatewayProvider = Provider<RewardGateway>((ref) {
     auth: ref.watch(firebaseAuthProvider),
     baseUrl: env.rewardApiBaseUrl,
   );
-});
-
-final iapGatewayProvider = Provider<IapGateway>((_) {
-  return RevenueCatIapGateway();
 });
 
 // === Future providers (added in their respective milestones) ===

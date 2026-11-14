@@ -2,7 +2,7 @@
 name: shortigo
 description: Short-drama streaming app.
 publish_to: 'none'
-version: 0.1.0+3
+version: 0.1.0+4
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
@@ -44,7 +44,6 @@ dependencies:
 
   # Monetization
   google_mobile_ads: 5.1.0
-  purchases_flutter: ^10.10.1
 
   # Observability
   sentry_flutter: ^9.21.0
