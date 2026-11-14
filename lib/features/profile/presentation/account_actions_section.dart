@@ -5,14 +5,12 @@ import '../../../core/theme/app_colors.dart';
 class AccountActionsSection extends StatelessWidget {
   const AccountActionsSection({
     required this.isDeleting,
-    required this.onRestorePurchases,
     required this.onDeleteAccount,
     this.error,
     super.key,
   });
 
   final bool isDeleting;
-  final VoidCallback onRestorePurchases;
   final Future<void> Function() onDeleteAccount;
   final String? error;
 
@@ -22,16 +20,10 @@ class AccountActionsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Text(
-          'Account & Subscription',
+          'Account',
           style: TextStyle(color: AppColors.textSecondary),
         ),
         const SizedBox(height: 8),
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.restore),
-          title: const Text('Restore purchases'),
-          onTap: onRestorePurchases,
-        ),
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(Icons.delete_outline, color: AppColors.error),

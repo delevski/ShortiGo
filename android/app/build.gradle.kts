@@ -44,12 +44,6 @@ val isReleaseBuild = gradle.startParameter.taskNames.any {
 if (isReleaseBuild && System.getenv("SHORTIGO_ALLOW_UNSAFE_RELEASE") != "1") {
     val googleSampleAdMobPrefix = "ca-app-pub-3940256099942544"
     val problems = mutableListOf<String>()
-    val rcKey = dartDefines["RC_API_KEY_ANDROID"].orEmpty().trim()
-    if (rcKey.isEmpty()) {
-        problems.add("RC_API_KEY_ANDROID is empty (use the RevenueCat goog_ public key).")
-    } else if (rcKey.lowercase().startsWith("test_")) {
-        problems.add("RC_API_KEY_ANDROID is a RevenueCat TEST key (test_...). The app would show 'Wrong API Key' and close. Use the goog_ key.")
-    }
     val adMobAppIdValue = dartDefines["ADMOB_APP_ID_ANDROID"].orEmpty()
     if (adMobAppIdValue.isEmpty() || adMobAppIdValue.startsWith(googleSampleAdMobPrefix)) {
         problems.add("ADMOB_APP_ID_ANDROID is missing or Google's sample ID.")

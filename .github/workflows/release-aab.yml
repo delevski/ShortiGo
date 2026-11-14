@@ -1,0 +1,66 @@
+name: Release AAB
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Write upload-keystore signing config
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SHORTIGO_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.SHORTIGO_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.SHORTIGO_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.SHORTIGO_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > android/shortigo-upload.keystore
+          cat > android/key.properties <<PROPS
+          storePassword=$KEYSTORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=$KEY_ALIAS
+          storeFile=shortigo-upload.keystore
+          PROPS
+
+      - name: Write dart_defines.json from secrets
+        env:
+          SENTRY_DSN: ${{ secrets.SHORTIGO_SENTRY_DSN }}
+          ADMOB_APP_ID_ANDROID: ${{ secrets.SHORTIGO_ADMOB_APP_ID_ANDROID }}
+          ADMOB_REWARDED_ANDROID: ${{ secrets.SHORTIGO_ADMOB_REWARDED_ANDROID }}
+          REWARD_API_BASE_URL: ${{ secrets.SHORTIGO_REWARD_API_BASE_URL }}
+        run: |
+          cat > dart_defines.json <<DEFS
+          {
+            "ENV": "prod",
+            "FIREBASE_PROJECT_ID": "shortigo-prod",
+            "SENTRY_DSN": "$SENTRY_DSN",
+            "ADMOB_APP_ID_IOS": "ca-app-pub-3940256099942544~1458002511",
+            "ADMOB_APP_ID_ANDROID": "$ADMOB_APP_ID_ANDROID",
+            "ADMOB_REWARDED_IOS": "ca-app-pub-3940256099942544/1712485313",
+            "ADMOB_REWARDED_ANDROID": "$ADMOB_REWARDED_ANDROID",
+            "REWARD_API_BASE_URL": "$REWARD_API_BASE_URL"
+          }
+          DEFS
+
+      - run: flutter pub get
+
+      - run: flutter test
+
+      - run: flutter build appbundle --release --dart-define-from-file=dart_defines.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shortigo-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
