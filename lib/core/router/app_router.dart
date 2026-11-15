@@ -14,7 +14,6 @@ import '../../features/profile/presentation/profile_page.dart';
 import '../../features/rewards/presentation/rewards_page.dart';
 import '../../features/series_detail/presentation/series_detail_page.dart';
 import '../../features/shorts/presentation/shorts_page.dart';
-import '../../features/subscription/presentation/subscribe_page.dart';
 
 /// Set by [buildRouter]; used by splash to pick the post-animation route.
 bool splashRequireAuth = false;
@@ -100,10 +99,6 @@ GoRouter buildRouter({
       GoRoute(
         path: '/login',
         builder: (_, __) => const LoginPage(),
-      ),
-      GoRoute(
-        path: '/subscribe',
-        builder: (_, __) => const SubscribePage(),
       ),
     ],
   );

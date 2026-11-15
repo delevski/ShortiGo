@@ -12,7 +12,6 @@ import 'app.dart';
 import 'bootstrap/firebase_bootstrap.dart';
 import 'core/env/env.dart';
 import 'core/router/app_router.dart';
-import 'data/iap/revenuecat_iap_gateway.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -49,41 +48,7 @@ Future<void> main() async {
         options.dsn = env.sentryDsn;
       });
     }
-    await _initializeIap();
   });
-}
-
-/// Configures RevenueCat only with keys that are safe for this build.
-///
-/// In prod/release builds an empty key or a RevenueCat test key (`test_...`)
-/// makes the SDK show "Wrong API Key" and close the app, so those keys are
-/// never passed on: purchases stay off and the rest of the app keeps running.
-Future<void> _initializeIap() async {
-  final reasons = env.iapDisabledReasons;
-  if (reasons.isNotEmpty) {
-    final message = 'In-app purchases disabled for this build: '
-        '${reasons.join(' ')}';
-    debugPrint(message);
-    if (env.sentryDsn.isNotEmpty) {
-      await Sentry.captureMessage(message, level: SentryLevel.error);
-    }
-  }
-  final appleKey = env.safeRevenueCatKeyIos;
-  final googleKey = env.safeRevenueCatKeyAndroid;
-  if (appleKey.isEmpty && googleKey.isEmpty) {
-    return;
-  }
-  try {
-    await RevenueCatIapGateway().initialize(
-      appleApiKey: appleKey,
-      googleApiKey: googleKey,
-    );
-  } catch (error, stackTrace) {
-    debugPrint('RevenueCat setup failed, purchases stay off: $error');
-    if (env.sentryDsn.isNotEmpty) {
-      await Sentry.captureException(error, stackTrace: stackTrace);
-    }
-  }
 }
 
 Future<void> _onAuthStateChanged(fb.User? user) async {
@@ -91,6 +56,20 @@ Future<void> _onAuthStateChanged(fb.User? user) async {
     return;
   }
 
+  // A transient Firestore error here (e.g. a permission-denied race while
+  // the auth token settles right after sign-in) must never crash the app:
+  // the user doc is created on the next auth event or app start instead.
+  try {
+    await _ensureUserDoc(user);
+  } catch (error, stackTrace) {
+    debugPrint('User doc bootstrap failed, will retry on next auth event: $error');
+    if (env.sentryDsn.isNotEmpty) {
+      await Sentry.captureException(error, stackTrace: stackTrace);
+    }
+  }
+}
+
+Future<void> _ensureUserDoc(fb.User user) async {
   final db = FirebaseFirestore.instance;
   final ref = db.collection('users').doc(user.uid);
   final snap = await ref.get();

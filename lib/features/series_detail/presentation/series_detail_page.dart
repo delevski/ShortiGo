@@ -134,11 +134,6 @@ class SeriesDetailPage extends ConsumerWidget {
                           const Icon(Icons.play_circle_outline),
                       },
                       onTap: () {
-                        if (accessFor(episode, user) ==
-                            EpisodeAccessState.vipRequired) {
-                          context.push('/subscribe');
-                          return;
-                        }
                         context.push('/player/$seriesId/${episode.id}');
                       },
                     );

@@ -11,7 +11,6 @@ import '../../../domain/entities/transaction.dart';
 import '../../../domain/entities/user.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/loading_view.dart';
-import '../../subscription/application/subscription_notifier.dart';
 import '../application/account_deletion_notifier.dart';
 import '../application/profile_notifier.dart';
 import 'account_actions_section.dart';
@@ -158,32 +157,10 @@ class ProfilePage extends ConsumerWidget {
                 const SizedBox(height: 24),
                 const _AdDiagnostics(),
               ],
-              if (!user.isVip) ...[
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: () => context.push('/subscribe'),
-                  child: const Text('Get VIP'),
-                ),
-              ],
               const SizedBox(height: 16),
               AccountActionsSection(
                 isDeleting: deletion.isDeleting,
                 error: deletion.error,
-                onRestorePurchases: () async {
-                  await ref
-                      .read(subscriptionNotifierProvider.notifier)
-                      .restorePurchases();
-                  if (!context.mounted) {
-                    return;
-                  }
-                  final result =
-                      ref.read(subscriptionNotifierProvider).valueOrNull;
-                  final message = result?.message ?? result?.error;
-                  if (message != null) {
-                    ScaffoldMessenger.of(context)
-                        .showSnackBar(SnackBar(content: Text(message)));
-                  }
-                },
                 onDeleteAccount: () async {
                   final deleted = await ref
                       .read(accountDeletionNotifierProvider.notifier)

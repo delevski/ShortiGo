@@ -44,26 +44,10 @@ class EpisodePlayerPage extends ConsumerWidget {
               ? EpisodeAccessState.open
               : accessFor(episode, user);
           if (access == EpisodeAccessState.vipRequired) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.lock,
-                    size: 64,
-                    color: AppColors.vipGold,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'This episode is VIP-only',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: () => context.push('/subscribe'),
-                    child: const Text('Get VIP'),
-                  ),
-                ],
+            return const Center(
+              child: Text(
+                'This episode is not available yet',
+                style: TextStyle(color: Colors.white),
               ),
             );
           }
